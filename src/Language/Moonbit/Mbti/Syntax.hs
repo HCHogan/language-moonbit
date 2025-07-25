@@ -9,25 +9,34 @@ data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
 
 data Decl
   = FunDecl
-  | FunAliasDecl
+    {
+      funName :: String
+    }
+  -- | FunAliasDecl
 
-  | MethodDecl
-  | ImplForTypeDecl
-  | DefaultImplDecl
+  -- | MethodDecl
+  -- | ImplForTypeDecl
+  -- | DefaultImplDecl
 
-  | ValueDecl
-  | ConstDecl
-  | TypeDecl
-  | TypeAliasDecl
+  -- | ConstDecl
+  -- | TypeDecl
+  -- | TypeAliasDecl
 
-  | StructDecl
-  | EnumDecl
-  | ErrorTypeDecl
-  | TraitDecl
-  | TraitAliasDecl
+  -- | StructDecl
+  -- | EnumDecl
+  -- | ErrorTypeDecl
+  -- | TraitDecl
+  -- | TraitAliasDecl
   deriving (Show, Eq)
 
 data ModulePath = ModulePath { mpUserName :: String, mpModuleName :: String, mpPackagePath :: [String] }
   deriving (Show, Eq)
 
+data Type
+  = TVar String           -- ^ 类型变量或无参类型构造器
+  | TCon String [Type]    -- ^ 有参的类型构造器
+  | TFun Type Type        -- ^ 函数类型：T1 -> T2
+  | TTuple [Type]         -- ^ 元组类型：(..., ...)
+  | TArray Type           -- ^ 数组/列表类型：[T]
+  deriving (Eq, Show)
 
