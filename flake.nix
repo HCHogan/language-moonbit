@@ -2,7 +2,7 @@
   description = "My flake template";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -37,23 +37,10 @@
           haskell.compiler.ghc912
           haskell.packages.ghc912.haskell-language-server
           cabal-install
-
-          (rust-bin.nightly.latest.default.override
-            {
-              extensions = [
-                "rust-src"
-                "rust-analyzer"
-                "llvm-tools"
-              ];
-              # targets = [];
-            })
         ];
       in {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
-          overlays = [
-            (import rust-overlay)
-          ];
           config = {};
         };
         devShells = {
