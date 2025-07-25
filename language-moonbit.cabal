@@ -67,7 +67,6 @@ library
 
         Language.Moonbit.Mbti
         Language.Moonbit.Mbti.Parser
-        Language.Moonbit.Mbti.Lexer
         Language.Moonbit.Mbti.Syntax
 
     -- Modules included in this library but not exported.
