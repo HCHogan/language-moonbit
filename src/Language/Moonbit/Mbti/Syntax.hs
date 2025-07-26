@@ -1,42 +1,82 @@
-module Language.Moonbit.Mbti.Syntax (
-  MbtiFile(..),
-  Decl(..),
-) where
+module Language.Moonbit.Mbti.Syntax
+  ( MbtiFile (..),
+    Decl (..),
+  )
+where
 
 -- | This module defines the syntax for the Moonbit type inference system (Mbti).
 data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
   deriving (Show, Eq)
 
 data Decl
-  = FunDecl
-    {
-      funName :: String
-    }
-  -- | FunAliasDecl
+  = FnDecl
+      { fnSig :: FnSig,
+        fnAttr :: [FnAttr],
+        fnKind :: FnKind
+      }
+  | -- \| ImplForTypeDecl
+    -- \| DefaultImplDecl
 
-  -- | MethodDecl
-  -- | ImplForTypeDecl
-  -- | DefaultImplDecl
+    -- \| ConstDecl
+    TypeDecl
+  -- \| TypeAliasDecl
 
-  -- | ConstDecl
-  -- | TypeDecl
-  -- | TypeAliasDecl
+  -- \| StructDecl
+  -- \| EnumDecl
+  -- \| ErrorTypeDecl
+  -- \| TraitDecl
+  -- \| TraitAliasDecl
+  deriving
+    ( -- | FunAliasDecl
+      Show,
+      Eq
+    )
 
-  -- | StructDecl
-  -- | EnumDecl
-  -- | ErrorTypeDecl
-  -- | TraitDecl
-  -- | TraitAliasDecl
+data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
   deriving (Show, Eq)
 
-data ModulePath = ModulePath { mpUserName :: String, mpModuleName :: String, mpPackagePath :: [String] }
+data Effect
+  = EffAsync
+  | EffException EffectException
+  deriving (Show, Eq)
+
+data EffectException
+  = NoAraise
+  | Araise Type
   deriving (Show, Eq)
 
 data Type
-  = TVar String           -- ^ 类型变量或无参类型构造器
-  | TCon String [Type]    -- ^ 有参的类型构造器
-  | TFun Type Type        -- ^ 函数类型：T1 -> T2
-  | TTuple [Type]         -- ^ 元组类型：(..., ...)
-  | TArray Type           -- ^ 数组/列表类型：[T]
+  = TVar TVar
+  | TCon Name [Type]
+  | TFun [Type] Type [Effect]
+  | TTuple [Type]
+  | TArray Type
   deriving (Eq, Show)
 
+newtype TVar = TV Name
+  deriving (Eq, Show)
+
+newtype Constraint
+  = CTrait Name
+  deriving (Eq, Show)
+
+data FnKind
+  = FreeFn
+  | Method {}
+  deriving (Eq, Show)
+
+newtype Name = Name String
+  deriving (Eq, Show)
+
+data FnSig = FnSig
+  { funName :: Name,
+    funParams :: [(Name, Type)],
+    funReturnType :: Type,
+    funTyParams :: [(TVar, [Constraint])],
+    funEff :: [Effect]
+  }
+  deriving (Eq, Show)
+
+data FnAttr
+  = Deprecated
+  deriving (Eq, Show)

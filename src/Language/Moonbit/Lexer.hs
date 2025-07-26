@@ -62,6 +62,7 @@ data ReservedWord
   | RWIs
   | RWTry
   | RWCatch
+  | RWImport
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | All of the reserved operator symbols in the language
@@ -123,6 +124,7 @@ reservedWordToString = \case
   RWIs -> "is"
   RWTry -> "try"
   RWCatch -> "catch"
+  RWImport -> "import"
 
 reservedOpToString :: ReservedOp -> String
 reservedOpToString = \case
