@@ -1,7 +1,7 @@
-module Language.Moonbit.Mbti.Syntax
-  ( MbtiFile (..),
-    Decl (..),
-  )
+module Language.Moonbit.Mbti.Syntax (
+  MbtiFile (..),
+  Decl (..),
+)
 where
 
 -- | This module defines the syntax for the Moonbit type inference system (Mbti).
@@ -9,16 +9,12 @@ data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
   deriving (Show, Eq)
 
 data Decl
-  = FnDecl
-      { fnSig :: FnSig,
-        fnAttr :: [FnAttr],
-        fnKind :: FnKind
-      }
+  = FnDecl FnDecl'
   | -- \| ImplForTypeDecl
     -- \| DefaultImplDecl
 
     -- \| ConstDecl
-    TypeDecl
+    TypeDecl Type [TVar]
   -- \| TypeAliasDecl
 
   -- \| StructDecl
@@ -28,8 +24,8 @@ data Decl
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
-      Show,
-      Eq
+      Show
+    , Eq
     )
 
 data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
@@ -62,21 +58,30 @@ newtype Constraint
 
 data FnKind
   = FreeFn
-  | Method {}
+  | Method Type -- impl For which type
   deriving (Eq, Show)
+
+-- \| TraitMethod
 
 newtype Name = Name String
   deriving (Eq, Show)
 
 data FnSig = FnSig
-  { funName :: Name,
-    funParams :: [(Name, Type)],
-    funReturnType :: Type,
-    funTyParams :: [(TVar, [Constraint])],
-    funEff :: [Effect]
+  { funName :: Name
+  , funParams :: [(Name, Type)]
+  , funReturnType :: Type
+  , funTyParams :: [(TVar, [Constraint])]
+  , funEff :: [Effect]
   }
   deriving (Eq, Show)
 
 data FnAttr
   = Deprecated
+  deriving (Eq, Show)
+
+data FnDecl' = FnDecl'
+  { fnSig :: FnSig
+  , fnAttr :: [FnAttr]
+  , fnKind :: FnKind
+  }
   deriving (Eq, Show)
