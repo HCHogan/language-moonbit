@@ -168,15 +168,11 @@ pFnDecl = do
   attrs <- many (pAttr <* whiteSpace) -- 1) attributes
   isAsync <- option False (reserved RWAsync $> True) -- 2) async keyword
   reserved RWFn -- 2) the fn keyword + optional type params
-  typs <- option [] pTyParams
-  -- 3) kind (free vs method) and the simple name
-  (kind, nm) <- pKindName
-  -- 4) parameter list
-  params <- parens (commaSep pParam)
-  -- 5) return arrow + return type
+  typs <- option [] pTyParams -- 3) kind (free vs method) and the simple name
+  (kind, nm) <- pKindName -- 4) parameter list
+  params <- parens (commaSep pParam) -- 5) return arrow + return type
   reservedOp OpArrow
-  retTy <- pType
-  -- 6) exception effects
+  retTy <- pType -- 6) exception effects
   effEx <- option NoAraise pEffectException
   let effects = [EffAsync | isAsync] ++ [EffException effEx]
   let sig =
