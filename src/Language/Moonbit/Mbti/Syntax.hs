@@ -12,6 +12,7 @@ module Language.Moonbit.Mbti.Syntax (
   FnSig (..),
   FnAttr (..),
   TPath (..),
+  FnDecl' (..),
 )
 where
 

@@ -20,6 +20,7 @@ module Language.Moonbit.Lexer (
   commaSep,
   symbol,
   slash,
+  commaSep1,
 ) where
 
 import Data.Functor.Identity
@@ -96,6 +97,9 @@ data ReservedOp
   | OpQuestion -- "?"
   | OpExclamation -- "!"
   | OpDot -- "."
+  | OpDotDot -- ".."
+  | OpColon -- ":"
+  | OpTilde -- "~"
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 reservedWordToString :: ReservedWord -> String
@@ -161,6 +165,9 @@ reservedOpToString = \case
   OpQuestion -> "?"
   OpExclamation -> "!"
   OpDot -> "."
+  OpDotDot -> ".."
+  OpColon -> ":"
+  OpTilde -> "~"
 
 reservedWords :: [String]
 reservedWords = reservedWordToString <$> [minBound .. maxBound]
@@ -214,6 +221,9 @@ whiteSpace = Tok.whiteSpace lexer
 
 commaSep :: Parser a -> Parser [a]
 commaSep = Tok.commaSep lexer
+
+commaSep1 :: Parser a -> Parser [a]
+commaSep1 = Tok.commaSep1 lexer
 
 integer :: Parser Integer
 integer = Tok.natural lexer

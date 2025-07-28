@@ -3,7 +3,6 @@
 module Language.Moonbit.Mbti.Parser where
 
 import Data.Functor
-import Data.Maybe
 import Language.Moonbit.Lexer
 import Language.Moonbit.Mbti.Syntax
 import Text.Parsec.Text.Lazy (Parser)
@@ -14,6 +13,9 @@ attrCtors :: [(String, Maybe String -> FnAttr)]
 attrCtors =
   [ ("deprecated", Deprecated)
   ]
+
+-- >>> parse pAttr "" "#deprecated(\"use xxx instead\")"
+-- Right (Deprecated (Just "use xxx instead"))
 
 pAttr :: Parser FnAttr
 pAttr = do
@@ -38,11 +40,11 @@ pTypeDecl = do
 
 pTFun :: Parser Type
 pTFun = do
-  isAsync <- fromMaybe False <$> optionMaybe (reserved RWAsync $> True)
+  isAsync <- option False (reserved RWAsync $> True)
   args <- parens (commaSep pType)
   reservedOp OpArrow
   retTy <- pType
-  effEx <- fromMaybe NoAraise <$> optionMaybe pEffectException
+  effEx <- option NoAraise pEffectException
   let effects = [EffAsync | isAsync] ++ [EffException effEx]
   return (TFun args retTy effects)
 
@@ -90,8 +92,8 @@ pTNonFun = do
 -- >>> parse pTFun "" "(Int, Bool) -> String?"
 -- Right (TFun [TName Nothing (TCon "Int" []),TName Nothing (TCon "Bool" [])] (TName Nothing (TCon "Option" [TName Nothing (TCon "String" [])])) [EffException NoAraise])
 
--- >>> parse pTFun "" "async (T) -> U noaraise"
--- Right (TFun [TName Nothing (TCon "T" [])] (TName Nothing (TCon "U" [])) [EffAsync,EffException NoAraise])
+-- >>> parse pTFun "" "async (@btree/btree.T) -> U noaraise"
+-- Right (TFun [TName (Just (TPath ["btree"] "btree")) (TCon "T" [])] (TName Nothing (TCon "U" [])) [EffAsync,EffException NoAraise])
 
 -- >>> parse pType "" "(A?,B) -> C raise?"
 -- Right (TFun [TName Nothing (TCon "Option" [TName Nothing (TCon "A" [])]),TName Nothing (TCon "B" [])] (TName Nothing (TCon "C" [])) [EffException AraisePoly])
@@ -105,9 +107,91 @@ pType =
 
 -- pFnSig :: Parser FnSig
 -- pFnSig = do
+-- isAsync <- option False (reserved RWAsync $> True)
+-- _ <- reserved RWFn
 
--- pType :: Parser Type
--- pType = do
+-- skip a default value (`= ..`)
+skipDefault :: Parser ()
+skipDefault = void $ optional $ reservedOp OpEq *> reservedOp OpDotDot
+
+-- parse one constraint, e.g. `Compare`
+pConstraint :: Parser Constraint
+pConstraint = CTrait <$> identifier
+
+-- Type parameters: [T1, T2: C1, T3: C2 + C3]
+pTyParams :: Parser [(TCon, [Constraint])]
+pTyParams = brackets (commaSep1 pTyParam)
+ where
+  pTyParam = do
+    name <- identifier
+    let tc = TCon name []
+    cs <- option [] (reservedOp OpColon *> pConstraint `sepBy1` reservedOp OpPlus)
+    return (tc, cs)
+
+-- >>> parse pTyParams "" "[T1, T2: C1, T3: C2 + C3]"
+-- Right [(TCon "T1" [],[]),(TCon "T2" [],[CTrait "C1"]),(TCon "T3" [],[CTrait "C2",CTrait "C3"])]
+
+-- parse a single function parameter, named or not
+pParam :: Parser (Maybe Name, Type)
+pParam = try pNamed <|> pAnon
+ where
+  pNamed = do
+    nm <- identifier
+    reservedOp OpTilde
+    reservedOp OpColon
+    ty <- pType
+    skipDefault
+    return (Just nm, ty)
+
+  pAnon = do
+    ty <- pType
+    return (Nothing, ty)
+
+-- parse the FnKind + plain name
+pKindName :: Parser (FnKind, Name)
+pKindName = try method <|> free
+ where
+  method = do
+    recv <- pTAtom
+    reservedOp OpColonColon
+    nm <- identifier
+    return (Method recv, nm)
+
+  free = do
+    nm <- identifier
+    return (FreeFn, nm)
+
+-- the top-level parser
+pFnDecl :: Parser FnDecl'
+pFnDecl = do
+  whiteSpace
+  attrs <- many (pAttr <* whiteSpace) -- 1) attributes
+  isAsync <- option False (reserved RWAsync $> True) -- 2) async keyword
+  reserved RWFn -- 2) the fn keyword + optional type params
+  typs <- option [] pTyParams
+  -- 3) kind (free vs method) and the simple name
+  (kind, nm) <- pKindName
+  -- 4) parameter list
+  params <- parens (commaSep pParam)
+  -- 5) return arrow + return type
+  reservedOp OpArrow
+  retTy <- pType
+  -- 6) exception effects
+  effEx <- option NoAraise pEffectException
+  let effects = [EffAsync | isAsync] ++ [EffException effEx]
+  let sig =
+        FnSig
+          { funName = nm
+          , funParams = params
+          , funReturnType = retTy
+          , funTyParams = typs
+          , funEff = effects
+          }
+  return $ FnDecl' sig attrs kind
+
+-- >>> parse pFnDecl "" "#deprecated fn Decimal::parse_decimal(String) -> Self raise StrConvError"
+-- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [(Nothing,TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
+
 
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})
