@@ -11,6 +11,7 @@ module Language.Moonbit.Mbti.Syntax (
   Name,
   FnSig (..),
   FnAttr (..),
+  TPath (..),
 )
 where
 
@@ -49,13 +50,13 @@ data Effect
 data EffectException
   = NoAraise
   | Araise Type
+  | AraisePoly
   deriving (Show, Eq)
 
 data Type
   = TName (Maybe TPath) TCon
   | TFun [Type] Type [Effect]
   | TTuple [Type]
-  | TArray Type
   deriving (Eq, Show)
 
 data TPath = TPath [Name] Name -- path + module name

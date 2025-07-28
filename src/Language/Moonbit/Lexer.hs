@@ -19,6 +19,7 @@ module Language.Moonbit.Lexer (
   whiteSpace,
   commaSep,
   symbol,
+  slash,
 ) where
 
 import Data.Functor.Identity
@@ -57,6 +58,8 @@ data ReservedWord
   | RWContinue
   | RWReturn
   | RWRaise
+  | RWNoRaise
+  | RWRaisePoly
   | RWTrue
   | RWFalse
   | RWAs
@@ -92,6 +95,7 @@ data ReservedOp
   | OpColonColon -- "::"
   | OpQuestion -- "?"
   | OpExclamation -- "!"
+  | OpDot -- "."
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 reservedWordToString :: ReservedWord -> String
@@ -120,6 +124,8 @@ reservedWordToString = \case
   RWContinue -> "continue"
   RWReturn -> "return"
   RWRaise -> "raise"
+  RWNoRaise -> "noraise"
+  RWRaisePoly -> "raise?"
   RWTrue -> "true"
   RWFalse -> "false"
   RWAs -> "as"
@@ -154,6 +160,7 @@ reservedOpToString = \case
   OpColonColon -> "::"
   OpQuestion -> "?"
   OpExclamation -> "!"
+  OpDot -> "."
 
 reservedWords :: [String]
 reservedWords = reservedWordToString <$> [minBound .. maxBound]
@@ -216,6 +223,9 @@ stringLit = Tok.stringLiteral lexer
 
 symbol :: String -> Parser String
 symbol = Tok.symbol lexer
+
+slash :: Parser String
+slash = symbol "/"
 
 contents :: Parser a -> Parser a
 contents p = do
