@@ -18,6 +18,7 @@ module Language.Moonbit.Lexer (
   brackets,
   whiteSpace,
   commaSep,
+  symbol,
 ) where
 
 import Data.Functor.Identity
@@ -63,6 +64,7 @@ data ReservedWord
   | RWTry
   | RWCatch
   | RWImport
+  | RWPackage
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | All of the reserved operator symbols in the language
@@ -125,6 +127,7 @@ reservedWordToString = \case
   RWTry -> "try"
   RWCatch -> "catch"
   RWImport -> "import"
+  RWPackage -> "package"
 
 reservedOpToString :: ReservedOp -> String
 reservedOpToString = \case
@@ -210,6 +213,9 @@ integer = Tok.natural lexer
 
 stringLit :: Parser String
 stringLit = Tok.stringLiteral lexer
+
+symbol :: String -> Parser String
+symbol = Tok.symbol lexer
 
 contents :: Parser a -> Parser a
 contents p = do

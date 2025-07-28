@@ -1,6 +1,16 @@
 module Language.Moonbit.Mbti.Syntax (
   MbtiFile (..),
   Decl (..),
+  ModulePath (..),
+  Effect (..),
+  EffectException (..),
+  Type (..),
+  TCon (..),
+  Constraint (..),
+  FnKind (..),
+  Name,
+  FnSig (..),
+  FnAttr (..),
 )
 where
 
@@ -14,7 +24,7 @@ data Decl
     -- \| DefaultImplDecl
 
     -- \| ConstDecl
-    TypeDecl Type [TVar]
+    TypeDecl Type
   -- \| TypeAliasDecl
 
   -- \| StructDecl
@@ -42,14 +52,16 @@ data EffectException
   deriving (Show, Eq)
 
 data Type
-  = TVar TVar
-  | TCon Name [Type]
+  = TName (Maybe TPath) TCon
   | TFun [Type] Type [Effect]
   | TTuple [Type]
   | TArray Type
   deriving (Eq, Show)
 
-newtype TVar = TV Name
+data TPath = TPath [Name] Name -- path + module name
+  deriving (Eq, Show)
+
+data TCon = TCon Name [Type]
   deriving (Eq, Show)
 
 newtype Constraint
@@ -63,20 +75,19 @@ data FnKind
 
 -- \| TraitMethod
 
-newtype Name = Name String
-  deriving (Eq, Show)
+type Name = String
 
 data FnSig = FnSig
   { funName :: Name
-  , funParams :: [(Name, Type)]
+  , funParams :: [(Maybe Name, Type)] -- Maybe Name for named parameters
   , funReturnType :: Type
-  , funTyParams :: [(TVar, [Constraint])]
+  , funTyParams :: [(TCon, [Constraint])]
   , funEff :: [Effect]
   }
   deriving (Eq, Show)
 
-data FnAttr
-  = Deprecated
+newtype FnAttr
+  = Deprecated (Maybe String) -- #deprecated("reason")
   deriving (Eq, Show)
 
 data FnDecl' = FnDecl'
