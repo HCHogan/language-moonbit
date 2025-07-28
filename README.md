@@ -4,7 +4,7 @@ WIP
 
 Moonbit & Mbti parser for haskell
 
-Some examples:
+Some examples(mbti):
 
 ```
 -- >>> parse pTypeDecl "" "type Node[K, V]"
