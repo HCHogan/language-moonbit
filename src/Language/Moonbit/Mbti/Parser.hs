@@ -192,6 +192,8 @@ pFnDecl = do
 -- >>> parse pFnDecl "" "#deprecated fn Decimal::parse_decimal(String) -> Self raise StrConvError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [(Nothing,TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
 
+-- >>> parse pFnDecl "" "fn parse_int(String, base~ : Int = ..) -> Int raise StrConvError"
+-- Right (FnDecl' {fnSig = FnSig {funName = "parse_int", funParams = [(Nothing,TName Nothing (TCon "String" [])),(Just "base",TName Nothing (TCon "Int" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})
