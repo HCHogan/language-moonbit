@@ -185,8 +185,8 @@ pFnDecl = do
           }
   return $ FnDecl' sig attrs kind
 
--- >>> parse pFnDecl "" "#deprecated fn Decimal::parse_decimal(String) -> Self raise StrConvError"
--- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [(Nothing,TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
+-- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
+-- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [(Nothing,TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),(Nothing,TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
 
 -- >>> parse pFnDecl "" "fn parse_int(String, base~ : Int = ..) -> Int raise StrConvError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "parse_int", funParams = [(Nothing,TName Nothing (TCon "String" [])),(Just "base",TName Nothing (TCon "Int" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [], fnKind = FreeFn})
