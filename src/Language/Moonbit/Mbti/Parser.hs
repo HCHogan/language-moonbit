@@ -257,12 +257,28 @@ pEnumDecl = do
   enumTy <- pType
   xs <- braces $ many enumVariant
   return $ EnumDecl vis enumTy xs
-  where
-    enumVariant = do
-      nm <- identifier
-      elems <- option [] $ parens (commaSep pParam)
-      return (nm, elems)
 
+enumVariant :: Parser (Name, [FnParam])
+enumVariant = do
+  nm <- identifier
+  elems <- option [] $ parens (commaSep pParam)
+  return (nm, elems)
+
+-- >>> parse pErrorTypeDecl "" "pub suberror Eff { Get((Int) -> Unit) Set(Int, (Unit) -> Unit) }"
+-- Right (ErrorTypeDecl VisPub "Eff" (ETEnumPayload [("Get",[AnonParam (TFun [TName Nothing (TCon "Int" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])]),("Set",[AnonParam (TName Nothing (TCon "Int" [])),AnonParam (TFun [TName Nothing (TCon "Unit" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])])]))
+
+pErrorTypeDecl :: Parser Decl
+pErrorTypeDecl = do
+  vis <- pVisibility
+  _ <- reserved RWSuberror
+  -- NOTE: we use Name here because error type declarations are not allowed to have type parameters
+  name <- identifier
+  et <- option ETNoPayload $ choice [try singlePayload, try enumPayload]
+  return $ ErrorTypeDecl vis name et
+  where
+    singlePayload = ETSinglePayload <$> pType
+
+    enumPayload = ETEnumPayload <$> braces (many enumVariant)
 
 pVisibility :: Parser Visibility
 pVisibility = do

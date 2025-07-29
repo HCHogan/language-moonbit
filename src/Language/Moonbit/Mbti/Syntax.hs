@@ -1,23 +1,24 @@
-module Language.Moonbit.Mbti.Syntax (
-  MbtiFile (..),
-  Decl (..),
-  ModulePath (..),
-  Effect (..),
-  EffectException (..),
-  Type (..),
-  TCon (..),
-  Constraint (..),
-  FnKind (..),
-  Name,
-  FnSig (..),
-  FnAttr (..),
-  TPath (..),
-  FnDecl' (..),
-  TTrait (..),
-  ImplSig (..),
-  FnParam (..),
-  Visibility (..),
-)
+module Language.Moonbit.Mbti.Syntax
+  ( MbtiFile (..),
+    Decl (..),
+    ModulePath (..),
+    Effect (..),
+    EffectException (..),
+    Type (..),
+    TCon (..),
+    Constraint (..),
+    FnKind (..),
+    Name,
+    FnSig (..),
+    FnAttr (..),
+    TPath (..),
+    FnDecl' (..),
+    TTrait (..),
+    ImplSig (..),
+    FnParam (..),
+    Visibility (..),
+    ErrorType (..),
+  )
 where
 
 -- | This module defines the syntax for the Moonbit type inference system (Mbti).
@@ -27,21 +28,21 @@ data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
 data Decl
   = FnDecl FnDecl'
   | ImplForTypeDecl ImplSig
-    -- \| DefaultImplDecl
+  | -- \| DefaultImplDecl
 
-  | ConstDecl Name Type
+    ConstDecl Name Type
   | TypeDecl Type
-  -- \| TypeAliasDecl
+  | -- \| TypeAliasDecl
 
-  -- \| StructDecl
-  | EnumDecl Visibility Type [(Name, [FnParam])]
-  -- \| ErrorTypeDecl
+    -- \| StructDecl
+    EnumDecl Visibility Type [(Name, [FnParam])]
+  | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
-      Show
-    , Eq
+      Show,
+      Eq
     )
 
 -- impl[K, V] Trait for T[K, V]
@@ -49,6 +50,12 @@ data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
   deriving (Show, Eq)
 
 data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
+  deriving (Show, Eq)
+
+data ErrorType
+  = ETNoPayload
+  | ETSinglePayload Type
+  | ETEnumPayload [(Name, [FnParam])]
   deriving (Show, Eq)
 
 data Effect
@@ -93,15 +100,15 @@ data FnKind
 type Name = String
 
 data FnSig = FnSig
-  { funName :: Name
-  , funParams :: [FnParam]
-  , funReturnType :: Type
-  , funTyParams :: [(TCon, [Constraint])]
-  , funEff :: [Effect]
+  { funName :: Name,
+    funParams :: [FnParam],
+    funReturnType :: Type,
+    funTyParams :: [(TCon, [Constraint])],
+    funEff :: [Effect]
   }
   deriving (Eq, Show)
 
-data FnParam 
+data FnParam
   = AnonParam Type -- Anonymous parameter, e.g. `Type`
   | NamedParam Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
   deriving (Eq, Show)
@@ -111,9 +118,9 @@ newtype FnAttr
   deriving (Eq, Show)
 
 data FnDecl' = FnDecl'
-  { fnSig :: FnSig
-  , fnAttr :: [FnAttr]
-  , fnKind :: FnKind
+  { fnSig :: FnSig,
+    fnAttr :: [FnAttr],
+    fnKind :: FnKind
   }
   deriving (Eq, Show)
 
