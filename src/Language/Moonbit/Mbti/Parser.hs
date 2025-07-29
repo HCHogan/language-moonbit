@@ -247,14 +247,36 @@ pTraitDecl = do
   methods <- braces $ many (pTraitMethod trait)
   return $ TraitDecl vis trait cs methods
 
+-- >>> parse pEnumDecl "" "pub(all) enum MyEnum[T] { A(T) B(T, fuck~ : T) }"
+-- Right (EnumDecl VisPubAll (TName Nothing (TCon "MyEnum" [TName Nothing (TCon "T" [])])) [("A",[AnonParam (TName Nothing (TCon "T" []))]),("B",[AnonParam (TName Nothing (TCon "T" [])),NamedParam "fuck" (TName Nothing (TCon "T" [])) False False])])
+
+pEnumDecl :: Parser Decl
+pEnumDecl = do
+  vis <- pVisibility
+  _ <- reserved RWEnum
+  enumTy <- pType
+  xs <- braces $ many enumVariant
+  return $ EnumDecl vis enumTy xs
+  where
+    enumVariant = do
+      nm <- identifier
+      elems <- option [] $ parens (commaSep pParam)
+      return (nm, elems)
+
+
 pVisibility :: Parser Visibility
 pVisibility = do
-  option VisPriv ((try pubOpen <|> pub <|> priv) <?> "visibility specifier")
+  option VisPriv ((try pubOpen <|> try pubAll <|> try pub <|> priv) <?> "visibility specifier")
   where
     pubOpen = do
       _ <- reserved RWPub
       _ <- parens (symbol "open")
       pure VisPubOpen
+
+    pubAll = do
+      _ <- reserved RWPub
+      _ <- parens (symbol "all")
+      pure VisPubAll
 
     pub = reserved RWPub $> VisPub
 

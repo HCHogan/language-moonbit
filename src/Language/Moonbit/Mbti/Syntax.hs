@@ -34,7 +34,7 @@ data Decl
   -- \| TypeAliasDecl
 
   -- \| StructDecl
-  -- \| EnumDecl
+  | EnumDecl Visibility Type [(Name, [FnParam])]
   -- \| ErrorTypeDecl
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   -- \| TraitAliasDecl
@@ -121,4 +121,5 @@ data Visibility
   = VisPub
   | VisPubOpen
   | VisPriv
+  | VisPubAll
   deriving (Eq, Show)
