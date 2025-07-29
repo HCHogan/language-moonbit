@@ -37,7 +37,7 @@ To use this library in your own project, add `language-moonbit` to the `build-de
 Here is a basic example of how to parse an `.mbti` file's content:
 
 ```haskell
-import Language.Moonbit.Mbti (parseMbti) -- Assuming parseMbti is exported
+import Language.Moonbit.Mbti (parseMbti)
 import Data.Text (Text)
 import qualified Data.Text.IO as TIO
 import Text.Parsec (ParseError)
