@@ -112,4 +112,9 @@ test-suite language-moonbit-test
     -- Test dependencies.
     build-depends:
         base ^>=4.21.0.0,
-        language-moonbit
+        language-moonbit,
+        parsec,
+        text,
+        directory,
+        filepath,
+        hspec

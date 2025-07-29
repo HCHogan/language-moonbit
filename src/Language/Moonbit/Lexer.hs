@@ -77,6 +77,7 @@ data ReservedWord
   | RWPackage
   | RWPub
   | RWPriv
+  | RWFnAlias
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | All of the reserved operator symbols in the language
@@ -149,6 +150,7 @@ reservedWordToString = \case
   RWPackage -> "package"
   RWPub -> "pub"
   RWPriv -> "priv"
+  RWFnAlias -> "fnalias"
 
 reservedOpToString :: ReservedOp -> String
 reservedOpToString = \case

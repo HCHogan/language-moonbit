@@ -2,6 +2,7 @@
 
 module Language.Moonbit.Mbti.Parser where
 
+import Control.Monad
 import Data.Functor
 import Language.Moonbit.Lexer
 import Language.Moonbit.Mbti.Syntax
@@ -26,14 +27,16 @@ pAttr = do
     Nothing -> parserFail $ "unknown attribute: " ++ name
 
 -- >>> parse pTypeDecl "" "type Node[K, V]"
--- Right (TypeDecl (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])))
+-- Right (TypeDecl VisPriv (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])) Nothing)
 
 pTypeDecl :: Parser Decl
 pTypeDecl = do
+  vis <- pVisibility
   _ <- reserved RWType
   name <- identifier
   tyargs <- option [] (brackets (commaSep identifier))
-  return $ TypeDecl (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs))
+  inner <- optionMaybe pType
+  return $ TypeDecl vis (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs)) inner
 
 -- >>> parse pConstDecl "" "const PI : Double = 0x3.243F6A8885A308CA8A54"
 -- Right (ConstDecl "PI" (TName Nothing (TCon "Double" [])))
@@ -46,6 +49,16 @@ pConstDecl = do
   ty <- pType
   _ <- optional (reservedOp OpEq <* pLit)
   return $ ConstDecl name ty
+
+-- >>> parse pLetDecl "" "let x : Int = 42"
+-- Right (LetDecl "x" (TName Nothing (TCon "Int" [])))
+
+pLetDecl :: Parser Decl
+pLetDecl = do
+  _ <- reserved RWLet
+  name <- identifier
+  _ <- reservedOp OpColon
+  LetDecl name <$> pType
 
 pLit :: Parser ()
 pLit =
@@ -113,13 +126,16 @@ pTAtom = do
 pTDynTrait :: Parser Type
 pTDynTrait = symbol "&" *> (TDynTrait <$> pTTrait)
 
+-- >>> parse pType "" "T??"
+-- Right (TName Nothing (TCon "Option" [TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])])]))
+
 pTNonFun :: Parser Type
 pTNonFun = do
   base <- try pTTuple <|> pTAtom
-  isOpt <- option False (symbol "?" $> True)
-  if isOpt
-    then return $ TName Nothing (TCon "Option" [base])
-    else return base
+  qs <- many (symbol "?")
+  let wrap t = TName Nothing (TCon "Option" [t])
+      ty = foldl (\t _ -> wrap t) base qs
+  return ty
 
 -- >>> parse pTFun "" "async (K, V) -> V raise E"
 -- Right (TFun [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])] (TName Nothing (TCon "V" [])) [EffAsync,EffException (Araise (TName Nothing (TCon "E" [])))])
@@ -179,12 +195,13 @@ pParam = try pNamed <|> pAnon
     pNamed :: Parser FnParam
     pNamed = do
       nm <- identifier
-      reservedOp OpTilde
+      isOptional <- option False (reservedOp OpQuestion $> True)
+      unless isOptional $ reservedOp OpTilde
       reservedOp OpColon
       ty <- pType
       au <- option False (try (pPAutoFill $> True))
       de <- option False (try (pPDefault $> True))
-      return $ NamedParam nm ty de au
+      return $ NamedParam nm (if isOptional then TName Nothing $ TCon "Option" [ty] else ty) de au
 
     pAnon :: Parser FnParam
     pAnon = AnonParam <$> pType
@@ -242,8 +259,7 @@ pTraitDecl = do
   vis <- pVisibility
   _ <- reserved RWTrait
   trait <- pTTrait
-  _ <- reservedOp OpColon
-  cs <- option [] (commaSep pConstraint)
+  cs <- option [] $ reservedOp OpColon *> commaSep pConstraint
   methods <- braces $ many (pTraitMethod trait)
   return $ TraitDecl vis trait cs methods
 
@@ -290,6 +306,18 @@ pTypeAliasDecl = do
   orig <- pType
   _ <- reserved RWAs
   TypeAliasDecl vis orig <$> pType
+
+-- >>> parse pFnAliasDecl "" "fnalias Int::abs"
+-- Right (FnAliasDecl VisPriv Nothing (TName Nothing (TCon "Int" [])) "abs")
+
+pFnAliasDecl :: Parser Decl
+pFnAliasDecl = do
+  vis <- pVisibility
+  _ <- reserved RWFnAlias
+  path <- option Nothing (Just <$> pTPath)
+  ty <- pType
+  _ <- reservedOp OpColonColon
+  FnAliasDecl vis path ty <$> identifier
 
 -- >>> parse pTraitAliasDecl "" "pub traitalias @builtin.BitXOr as BitXOr"
 -- Right (TraitAliasDecl VisPub (TTrait (Just (TPath [] "builtin")) "BitXOr") (TTrait Nothing "BitXOr"))
@@ -346,17 +374,20 @@ pVisibility = do
 -- >>> parse pFnDecl "" "fn[T : @quickcheck.Arbitary + FromJson] from_json(Json, path~ : JsonPath = ..) -> T raise JsonDecodeError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [AnonParam (TName Nothing (TCon "Json" [])),NamedParam "path" (TName Nothing (TCon "JsonPath" [])) True False], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (TTrait (Just (TPath [] "quickcheck")) "Arbitary"),CTrait (TTrait Nothing "FromJson")])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
+-- >>> parse pFnDecl "" "fn[T] Option::flatten(T??) -> T?"
+-- Right (FnDecl' {fnSig = FnSig {funName = "flatten", funParams = [AnonParam (TName Nothing (TCon "Option" [TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])])]))], funReturnType = TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])]), funTyParams = [(TCon "T" [],[])], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = Method (TName Nothing (TCon "Option" []))})
+
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})
 
 pPackageDecl :: Parser ModulePath
 pPackageDecl = reserved RWPackage *> pQuotedModulePath
 
--- >>> parse pImportDecl "" "import (\"user1/repo1/path/to/module\" \"user2/repo2/another/path\")"
+-- >>> parse pImportDecl "" "import (\"user1/repo1/path/to/module\" \n \"user2/repo2/another/path\")"
 -- Right [ModulePath {mpUserName = "user1", mpModuleName = "repo1", mpPackagePath = ["path","to","module"]},ModulePath {mpUserName = "user2", mpModuleName = "repo2", mpPackagePath = ["another","path"]}]
 
 pImportDecl :: Parser [ModulePath]
-pImportDecl = reserved RWImport *> parens (spaces *> pQuotedModulePath `sepBy` spaces <* spaces)
+pImportDecl = reserved RWImport *> parens (many $ spaces *> pQuotedModulePath <* spaces)
 
 -- >>> parse pModulePath "" "user/modname/path/to/module"
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "modname", mpPackagePath = ["path","to","module"]})
@@ -377,20 +408,21 @@ pDecl =
     [ FnDecl <$> try pFnDecl,
       try pImplForTypeDecl,
       try pConstDecl,
+      try pLetDecl,
       try pTypeDecl,
       try pTypeAliasDecl,
       try pStructDecl,
       try pEnumDecl,
       try pErrorTypeDecl,
       try pTraitDecl,
-      try pTraitAliasDecl
+      try pTraitAliasDecl,
+      try pFnAliasDecl
     ]
 
 pMbtiFile :: Parser MbtiFile
-pMbtiFile = do
-  whiteSpace
+pMbtiFile = contents $ do
   p <- pPackageDecl
-  i <- option [] pImportDecl
-  ds <- many pDecl
   whiteSpace
-  return $ MbtiFile p i ds
+  is <- option [] pImportDecl
+  decls <- many pDecl
+  return $ MbtiFile p is decls

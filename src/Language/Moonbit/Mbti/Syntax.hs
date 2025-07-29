@@ -29,18 +29,16 @@ data Decl
   = FnDecl FnDecl'
   | ImplForTypeDecl ImplSig
   | ConstDecl Name Type
-  | TypeDecl Type
+  | LetDecl Name Type
+  | TypeDecl Visibility Type (Maybe Type) -- opaque or newtype
   | TypeAliasDecl Visibility Type Type -- original type, alias name
   | StructDecl Visibility Type [(Name, Type)]
   | EnumDecl Visibility Type [(Name, [FnParam])]
   | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   | TraitAliasDecl Visibility TTrait TTrait
-  deriving
-    ( -- | FunAliasDecl
-      Show,
-      Eq
-    )
+  | FnAliasDecl Visibility (Maybe TPath) Type Name
+  deriving (Show, Eq)
 
 -- impl[K, V] Trait for T[K, V]
 data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
