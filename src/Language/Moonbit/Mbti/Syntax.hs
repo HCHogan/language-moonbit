@@ -66,8 +66,8 @@ data TPath = TPath [Name] Name -- path + module name
 data TCon = TCon Name [Type]
   deriving (Eq, Show)
 
-newtype Constraint
-  = CTrait Name
+data Constraint
+  = CTrait (Maybe TPath) Name
   deriving (Eq, Show)
 
 data FnKind

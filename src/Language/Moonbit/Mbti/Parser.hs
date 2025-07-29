@@ -116,7 +116,9 @@ skipDefault = void $ optional $ reservedOp OpEq *> reservedOp OpDotDot
 
 -- parse one constraint, e.g. `Compare`
 pConstraint :: Parser Constraint
-pConstraint = CTrait <$> identifier
+pConstraint = do
+  mpath <- optionMaybe (pTPath <* reservedOp OpDot)
+  CTrait mpath <$> identifier
 
 -- Type parameters: [T1, T2: C1, T3: C2 + C3]
 pTyParams :: Parser [(TCon, [Constraint])]
@@ -128,8 +130,8 @@ pTyParams = brackets (commaSep1 pTyParam)
     cs <- option [] (reservedOp OpColon *> pConstraint `sepBy1` reservedOp OpPlus)
     return (tc, cs)
 
--- >>> parse pTyParams "" "[T1, T2: C1, T3: C2 + C3]"
--- Right [(TCon "T1" [],[]),(TCon "T2" [],[CTrait "C1"]),(TCon "T3" [],[CTrait "C2",CTrait "C3"])]
+-- >>> parse pTyParams "" "[T1, T2: C1, T3: @p1/p2.C2 + C3]"
+-- Right [(TCon "T1" [],[]),(TCon "T2" [],[CTrait Nothing "C1"]),(TCon "T3" [],[CTrait (Just (TPath ["p1"] "p2")) "C2",CTrait Nothing "C3"])]
 
 -- parse a single function parameter, named or not
 pParam :: Parser (Maybe Name, Type)
@@ -190,6 +192,9 @@ pFnDecl = do
 
 -- >>> parse pFnDecl "" "fn parse_int(String, base~ : Int = ..) -> Int raise StrConvError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "parse_int", funParams = [(Nothing,TName Nothing (TCon "String" [])),(Just "base",TName Nothing (TCon "Int" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [], fnKind = FreeFn})
+
+-- >>> parse pFnDecl "" "fn[T : @quickcheck.Arbitary + FromJson] from_json(Json, path~ : JsonPath = ..) -> T raise JsonDecodeError"
+-- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [(Nothing,TName Nothing (TCon "Json" [])),(Just "path",TName Nothing (TCon "JsonPath" []))], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (Just (TPath [] "quickcheck")) "Arbitary",CTrait Nothing "FromJson"])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})
