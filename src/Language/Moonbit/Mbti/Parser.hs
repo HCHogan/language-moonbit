@@ -92,8 +92,8 @@ pTNonFun = do
 -- >>> parse pTFun "" "async (K, V) -> V raise E"
 -- Right (TFun [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])] (TName Nothing (TCon "V" [])) [EffAsync,EffException (Araise (TName Nothing (TCon "E" [])))])
 
--- >>> parse pTFun "" "(Int, Bool) -> String?"
--- Right (TFun [TName Nothing (TCon "Int" []),TName Nothing (TCon "Bool" [])] (TName Nothing (TCon "Option" [TName Nothing (TCon "String" [])])) [EffException NoAraise])
+-- >>> parse pTFun "" "(T[(&Show) -> Int, String], Bool) -> String?"
+-- Right (TFun [TName Nothing (TCon "T" [TFun [TDynTrait (TTrait Nothing "Show")] (TName Nothing (TCon "Int" [])) [EffException NoAraise],TName Nothing (TCon "String" [])]),TName Nothing (TCon "Bool" [])] (TName Nothing (TCon "Option" [TName Nothing (TCon "String" [])])) [EffException NoAraise])
 
 -- >>> parse pTFun "" "async (@btree/btree.T) -> U noaraise"
 -- Right (TFun [TName (Just (TPath ["btree"] "btree")) (TCon "T" [])] (TName Nothing (TCon "U" [])) [EffAsync,EffException NoAraise])
@@ -105,8 +105,10 @@ pType :: Parser Type
 pType =
   choice
     [ try pTFun
+    , try pTDynTrait
     , pTNonFun
     ]
+    <?> "type"
 
 -- pFnSig :: Parser FnSig
 -- pFnSig = do
