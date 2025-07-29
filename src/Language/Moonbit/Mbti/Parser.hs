@@ -28,10 +28,7 @@ pAttr = do
 
 -- >>> parse pTypeDecl "" "type Node[K, V]"
 -- Right (TypeDecl (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])))
--- >>> parse pTypeDecl "" "type Node"
--- Right (TypeDecl (TName Nothing (TCon "Node" [])))
 
-pTypeDecl :: Parser Decl
 pTypeDecl = do
   _ <- reserved RWType
   name <- identifier
@@ -122,8 +119,12 @@ pType =
     <?> "type"
 
 -- skip a default value (`= ..`)
-skipDefault :: Parser ()
-skipDefault = void $ optional $ reservedOp OpEq *> reservedOp OpDotDot
+pPDefault :: Parser ()
+pPDefault = reservedOp OpEq *> reservedOp OpDotDot
+
+-- skip a autofill value (`= _`)
+pPAutoFill :: Parser ()
+pPAutoFill = void $ reservedOp OpEq *> reservedOp OpUnderscore
 
 pTTrait :: Parser TTrait
 pTTrait = do
@@ -148,20 +149,21 @@ pTyParams = brackets (commaSep1 pTyParam)
 -- Right [(TCon "T1" [],[]),(TCon "T2" [],[CTrait (TTrait Nothing "C1")]),(TCon "T3" [],[CTrait (TTrait (Just (TPath ["p1"] "p2")) "C2"),CTrait (TTrait Nothing "C3")])]
 
 -- parse a single function parameter, named or not
-pParam :: Parser (Maybe Name, Type)
+pParam :: Parser FnParam
 pParam = try pNamed <|> pAnon
  where
+  pNamed :: Parser FnParam
   pNamed = do
     nm <- identifier
     reservedOp OpTilde
     reservedOp OpColon
     ty <- pType
-    skipDefault
-    return (Just nm, ty)
+    au <- option False (try (pPAutoFill $> True))
+    de <- option False (try (pPDefault  $> True))
+    return $ NamedParam nm ty de au
 
-  pAnon = do
-    ty <- pType
-    return (Nothing, ty)
+  pAnon :: Parser FnParam
+  pAnon = AnonParam <$> pType
 
 -- parse the FnKind + plain name
 pKindName :: Parser (FnKind, Name)
@@ -202,13 +204,13 @@ pFnDecl = do
   return $ FnDecl' sig attrs kind
 
 -- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
--- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [(Nothing,TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),(Nothing,TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
+-- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [AnonParam (TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),AnonParam (TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
 
--- >>> parse pFnDecl "" "fn parse_int(String, base~ : Int = ..) -> Int raise StrConvError"
--- Right (FnDecl' {fnSig = FnSig {funName = "parse_int", funParams = [(Nothing,TName Nothing (TCon "String" [])),(Just "base",TName Nothing (TCon "Int" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [], fnKind = FreeFn})
+-- >>> parse pFnDecl "" "fn inspect(&ToJson, content~ : Json, loc~ : SourceLoc = _, args_loc~ : ArgsLoc = _) -> Unit raise InspectError"
+-- Right (FnDecl' {fnSig = FnSig {funName = "inspect", funParams = [AnonParam (TDynTrait (TTrait Nothing "ToJson")),NamedParam "content" (TName Nothing (TCon "Json" [])) False False,NamedParam "loc" (TName Nothing (TCon "SourceLoc" [])) False True,NamedParam "args_loc" (TName Nothing (TCon "ArgsLoc" [])) False True], funReturnType = TName Nothing (TCon "Unit" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "InspectError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pFnDecl "" "fn[T : @quickcheck.Arbitary + FromJson] from_json(Json, path~ : JsonPath = ..) -> T raise JsonDecodeError"
--- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [(Nothing,TName Nothing (TCon "Json" [])),(Just "path",TName Nothing (TCon "JsonPath" []))], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (TTrait (Just (TPath [] "quickcheck")) "Arbitary"),CTrait (TTrait Nothing "FromJson")])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
+-- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [AnonParam (TName Nothing (TCon "Json" [])),NamedParam "path" (TName Nothing (TCon "JsonPath" [])) True False], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (TTrait (Just (TPath [] "quickcheck")) "Arbitary"),CTrait (TTrait Nothing "FromJson")])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})

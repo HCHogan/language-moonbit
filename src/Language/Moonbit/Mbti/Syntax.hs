@@ -15,6 +15,7 @@ module Language.Moonbit.Mbti.Syntax (
   FnDecl' (..),
   TTrait (..),
   ImplSig (..),
+  FnParam (..),
 )
 where
 
@@ -92,11 +93,16 @@ type Name = String
 
 data FnSig = FnSig
   { funName :: Name
-  , funParams :: [(Maybe Name, Type)] -- Maybe Name for named parameters
+  , funParams :: [FnParam]
   , funReturnType :: Type
   , funTyParams :: [(TCon, [Constraint])]
   , funEff :: [Effect]
   }
+  deriving (Eq, Show)
+
+data FnParam 
+  = AnonParam Type -- Anonymous parameter, e.g. `Type`
+  | NamedParam Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
   deriving (Eq, Show)
 
 newtype FnAttr

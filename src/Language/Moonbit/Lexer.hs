@@ -100,6 +100,7 @@ data ReservedOp
   | OpDotDot -- ".."
   | OpColon -- ":"
   | OpTilde -- "~"
+  | OpUnderscore -- "_"
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 reservedWordToString :: ReservedWord -> String
@@ -168,6 +169,7 @@ reservedOpToString = \case
   OpDotDot -> ".."
   OpColon -> ":"
   OpTilde -> "~"
+  OpUnderscore -> "_"
 
 reservedWords :: [String]
 reservedWords = reservedWordToString <$> [minBound .. maxBound]
