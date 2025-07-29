@@ -16,6 +16,7 @@ module Language.Moonbit.Mbti.Syntax (
   TTrait (..),
   ImplSig (..),
   FnParam (..),
+  Visibility (..),
 )
 where
 
@@ -35,7 +36,7 @@ data Decl
   -- \| StructDecl
   -- \| EnumDecl
   -- \| ErrorTypeDecl
-  | TraitDecl Name [FnDecl']
+  | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
@@ -84,7 +85,7 @@ data TTrait = TTrait (Maybe TPath) Name
 data FnKind
   = FreeFn
   | Method Type -- impl For which type
-  | TraitMethod Bool -- whether have default impl
+  | TraitMethod TTrait Bool -- whether have default impl
   deriving (Eq, Show)
 
 -- \| TraitMethod
@@ -114,4 +115,10 @@ data FnDecl' = FnDecl'
   , fnAttr :: [FnAttr]
   , fnKind :: FnKind
   }
+  deriving (Eq, Show)
+
+data Visibility
+  = VisPub
+  | VisPubOpen
+  | VisPriv
   deriving (Eq, Show)

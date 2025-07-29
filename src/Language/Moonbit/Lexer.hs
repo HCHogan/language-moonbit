@@ -75,6 +75,8 @@ data ReservedWord
   | RWCatch
   | RWImport
   | RWPackage
+  | RWPub
+  | RWPriv
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | All of the reserved operator symbols in the language
@@ -145,6 +147,8 @@ reservedWordToString = \case
   RWCatch -> "catch"
   RWImport -> "import"
   RWPackage -> "package"
+  RWPub -> "pub"
+  RWPriv -> "priv"
 
 reservedOpToString :: ReservedOp -> String
 reservedOpToString = \case

@@ -220,9 +220,45 @@ pFnDecl = do
   let sig = FnSig {funName = nm, funParams = params, funReturnType = retTy, funTyParams = typs, funEff = effects}
   return $ FnDecl' sig attrs kind
 
--- pTraitMethod :: Parser FnDecl'
--- pTraitMethod = do
---   identifier
+pTraitMethod :: TTrait -> Parser FnDecl'
+pTraitMethod trait = do
+  isAsync <- option False (reserved RWAsync $> True) -- 1) async keyword
+  nm <- identifier
+  params <- parens (commaSep pParam)
+  reservedOp OpArrow
+  retTy <- pType
+  effEx <- option NoAraise pEffectException
+  -- NOTE: default implementation of method use `= _`, in contrast to `= ..` which is a default value for a parameter
+  de <- option False (pPAutoFill $> True)
+  let effects = [EffAsync | isAsync] ++ [EffException effEx]
+  let sig = FnSig {funName = nm, funParams = params, funReturnType = retTy, funTyParams = [], funEff = effects}
+  return $ FnDecl' sig [] (TraitMethod trait de)
+
+-- >>> parse pTraitDecl "" "pub(open) trait Compare : Eq { compare(Self, Self) -> Int = _ }"
+-- Right (TraitDecl VisPubOpen (TTrait Nothing "Compare") [CTrait (TTrait Nothing "Eq")] [FnDecl' {fnSig = FnSig {funName = "compare", funParams = [AnonParam (TName Nothing (TCon "Self" [])),AnonParam (TName Nothing (TCon "Self" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = TraitMethod (TTrait Nothing "Compare") True}])
+
+pTraitDecl :: Parser Decl
+pTraitDecl = do
+  vis <- pVisibility
+  _ <- reserved RWTrait
+  trait <- pTTrait
+  _ <- reservedOp OpColon
+  cs <- option [] (commaSep pConstraint)
+  methods <- braces $ many (pTraitMethod trait)
+  return $ TraitDecl vis trait cs methods
+
+pVisibility :: Parser Visibility
+pVisibility = do
+  option VisPriv ((try pubOpen <|> pub <|> priv) <?> "visibility specifier")
+  where
+    pubOpen = do
+      _ <- reserved RWPub
+      _ <- parens (symbol "open")
+      pure VisPubOpen
+
+    pub = reserved RWPub $> VisPub
+
+    priv = reserved RWPriv $> VisPriv
 
 -- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [AnonParam (TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),AnonParam (TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
