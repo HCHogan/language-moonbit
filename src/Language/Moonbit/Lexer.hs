@@ -21,6 +21,12 @@ module Language.Moonbit.Lexer (
   symbol,
   slash,
   commaSep1,
+  hexadecimal,
+  naturalOrFloat,
+  float,
+  natural,
+  charLiteral,
+  octal,
 ) where
 
 import Data.Functor.Identity
@@ -232,6 +238,24 @@ integer = Tok.natural lexer
 
 stringLit :: Parser String
 stringLit = Tok.stringLiteral lexer
+
+charLiteral :: Parser Char
+charLiteral = Tok.charLiteral lexer
+
+natural :: Parser Integer
+natural = Tok.natural lexer
+
+float :: Parser Double
+float = Tok.float lexer
+
+naturalOrFloat :: Parser (Either Integer Double)
+naturalOrFloat = Tok.naturalOrFloat lexer
+
+hexadecimal :: Parser Integer
+hexadecimal = Tok.hexadecimal lexer
+
+octal :: Parser Integer
+octal = Tok.octal lexer
 
 symbol :: String -> Parser String
 symbol = Tok.symbol lexer

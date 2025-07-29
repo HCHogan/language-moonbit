@@ -28,7 +28,7 @@ data Decl
   | ImplForTypeDecl ImplSig
     -- \| DefaultImplDecl
 
-    -- \| ConstDecl
+  | ConstDecl Name Type
   | TypeDecl Type
   -- \| TypeAliasDecl
 

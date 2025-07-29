@@ -5,9 +5,8 @@ module Language.Moonbit.Mbti.Parser where
 import Data.Functor
 import Language.Moonbit.Lexer
 import Language.Moonbit.Mbti.Syntax
-import Text.Parsec.Text.Lazy (Parser)
-
 import Text.Parsec
+import Text.Parsec.Text.Lazy (Parser)
 
 attrCtors :: [(String, Maybe String -> FnAttr)]
 attrCtors =
@@ -29,11 +28,36 @@ pAttr = do
 -- >>> parse pTypeDecl "" "type Node[K, V]"
 -- Right (TypeDecl (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])))
 
+pTypeDecl :: Parser Decl
 pTypeDecl = do
   _ <- reserved RWType
   name <- identifier
   tyargs <- option [] (brackets (commaSep identifier))
   return $ TypeDecl (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs))
+
+-- >>> parse pConstDecl "" "const PI : Double = 0x3.243F6A8885A308CA8A54"
+-- Right (ConstDecl "PI" (TName Nothing (TCon "Double" [])))
+
+pConstDecl :: Parser Decl
+pConstDecl = do
+  _ <- reserved RWConst
+  name <- identifier
+  _ <- reservedOp OpColon
+  ty <- pType
+  _ <- optional (reservedOp OpEq <* pLit)
+  return $ ConstDecl name ty
+
+pLit :: Parser ()
+pLit =
+  choice
+    [ void $ try stringLit,
+      void $ try charLiteral,
+      void $ try integer,
+      void $ try natural,
+      void $ try float,
+      void $ try hexadecimal,
+      void $ try octal
+    ]
 
 -- >>> parse pImplForTypeDecl "" "impl[K: Compare + Eq, V : Show] Div for Node[K, V]"
 -- Right (ImplForTypeDecl (ImplSig [(TCon "K" [],[CTrait (TTrait Nothing "Compare"),CTrait (TTrait Nothing "Eq")]),(TCon "V" [],[CTrait (TTrait Nothing "Show")])] (TTrait Nothing "Div") (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])]))))
@@ -112,9 +136,9 @@ pTNonFun = do
 pType :: Parser Type
 pType =
   choice
-    [ try pTFun
-    , try pTDynTrait
-    , pTNonFun
+    [ try pTFun,
+      try pTDynTrait,
+      pTNonFun
     ]
     <?> "type"
 
@@ -138,12 +162,12 @@ pConstraint = CTrait <$> pTTrait
 -- Type parameters: [T1, T2: C1, T3: C2 + C3]
 pTyParams :: Parser [(TCon, [Constraint])]
 pTyParams = brackets (commaSep1 pTyParam)
- where
-  pTyParam = do
-    name <- identifier
-    let tc = TCon name []
-    cs <- option [] (reservedOp OpColon *> pConstraint `sepBy1` reservedOp OpPlus)
-    return (tc, cs)
+  where
+    pTyParam = do
+      name <- identifier
+      let tc = TCon name []
+      cs <- option [] (reservedOp OpColon *> pConstraint `sepBy1` reservedOp OpPlus)
+      return (tc, cs)
 
 -- >>> parse pTyParams "" "[T1, T2: C1, T3: @p1/p2.C2 + C3]"
 -- Right [(TCon "T1" [],[]),(TCon "T2" [],[CTrait (TTrait Nothing "C1")]),(TCon "T3" [],[CTrait (TTrait (Just (TPath ["p1"] "p2")) "C2"),CTrait (TTrait Nothing "C3")])]
@@ -151,33 +175,33 @@ pTyParams = brackets (commaSep1 pTyParam)
 -- parse a single function parameter, named or not
 pParam :: Parser FnParam
 pParam = try pNamed <|> pAnon
- where
-  pNamed :: Parser FnParam
-  pNamed = do
-    nm <- identifier
-    reservedOp OpTilde
-    reservedOp OpColon
-    ty <- pType
-    au <- option False (try (pPAutoFill $> True))
-    de <- option False (try (pPDefault  $> True))
-    return $ NamedParam nm ty de au
+  where
+    pNamed :: Parser FnParam
+    pNamed = do
+      nm <- identifier
+      reservedOp OpTilde
+      reservedOp OpColon
+      ty <- pType
+      au <- option False (try (pPAutoFill $> True))
+      de <- option False (try (pPDefault $> True))
+      return $ NamedParam nm ty de au
 
-  pAnon :: Parser FnParam
-  pAnon = AnonParam <$> pType
+    pAnon :: Parser FnParam
+    pAnon = AnonParam <$> pType
 
 -- parse the FnKind + plain name
 pKindName :: Parser (FnKind, Name)
 pKindName = try method <|> free
- where
-  method = do
-    recv <- pTAtom
-    reservedOp OpColonColon
-    nm <- identifier
-    return (Method recv, nm)
+  where
+    method = do
+      recv <- pTAtom
+      reservedOp OpColonColon
+      nm <- identifier
+      return (Method recv, nm)
 
-  free = do
-    nm <- identifier
-    return (FreeFn, nm)
+    free = do
+      nm <- identifier
+      return (FreeFn, nm)
 
 -- the top-level parser
 pFnDecl :: Parser FnDecl'
@@ -193,14 +217,7 @@ pFnDecl = do
   retTy <- pType -- 6) exception effects
   effEx <- option NoAraise pEffectException
   let effects = [EffAsync | isAsync] ++ [EffException effEx]
-  let sig =
-        FnSig
-          { funName = nm
-          , funParams = params
-          , funReturnType = retTy
-          , funTyParams = typs
-          , funEff = effects
-          }
+  let sig = FnSig {funName = nm, funParams = params, funReturnType = retTy, funTyParams = typs, funEff = effects}
   return $ FnDecl' sig attrs kind
 
 -- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
