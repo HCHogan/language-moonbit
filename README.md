@@ -2,7 +2,7 @@
 
 **IMPORTANT: Currently only `.mbti` parser are implemented.**
 
-<!-- [![Haskell CI](https://github.com/Hustcer/language-moonbit/actions/workflows/haskell.yml/badge.svg)](https://github.com/Hustcer/language-moonbit/actions/workflows/haskell.yml) -->
+<!-- [![Haskell CI](https://github.com/HCHogan/language-moonbit/actions/workflows/haskell.yml/badge.svg)](https://github.com/HCHogan/language-moonbit/actions/workflows/haskell.yml) -->
 <!-- [![Hackage](https://img.shields.io/hackage/v/language-moonbit.svg)](https://hackage.haskell.org/package/language-moonbit) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -21,7 +21,7 @@ This project uses [Cabal](https://www.haskell.org/cabal/) to manage dependencies
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/Hustcer/language-moonbit.git
+    git clone https://github.com/HCHogan/language-moonbit.git
     cd language-moonbit
     ```
 
@@ -37,9 +37,6 @@ To use this library in your own project, add `language-moonbit` to the `build-de
 Here is a basic example of how to parse an `.mbti` file's content:
 
 ```haskell
--- Note: You need to export the parsing function from the Language.Moonbit.Mbti module first.
--- For example, export `parseMbti`.
-
 import Language.Moonbit.Mbti (parseMbti) -- Assuming parseMbti is exported
 import Data.Text (Text)
 import qualified Data.Text.IO as TIO
@@ -120,5 +117,3 @@ Contributions are welcome!
 ## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
-
-```
