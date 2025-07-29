@@ -370,3 +370,27 @@ pModulePath = do
 
 pQuotedModulePath :: Parser ModulePath
 pQuotedModulePath = between (char '"') (char '"') pModulePath
+
+pDecl :: Parser Decl
+pDecl =
+  choice
+    [ FnDecl <$> try pFnDecl,
+      try pImplForTypeDecl,
+      try pConstDecl,
+      try pTypeDecl,
+      try pTypeAliasDecl,
+      try pStructDecl,
+      try pEnumDecl,
+      try pErrorTypeDecl,
+      try pTraitDecl,
+      try pTraitAliasDecl
+    ]
+
+pMbtiFile :: Parser MbtiFile
+pMbtiFile = do
+  whiteSpace
+  p <- pPackageDecl
+  i <- option [] pImportDecl
+  ds <- many pDecl
+  whiteSpace
+  return $ MbtiFile p i ds
