@@ -47,8 +47,11 @@ pConstDecl = do
   name <- identifier
   _ <- reservedOp OpColon
   ty <- pType
-  _ <- optional (reservedOp OpEq <* pLit)
+  skipLine
   return $ ConstDecl name ty
+  where
+    skipLine :: Parser ()
+    skipLine = void $ manyTill anyChar (try (void newline) <|> eof)
 
 -- >>> parse pLetDecl "" "let x : Int = 42"
 -- Right (LetDecl "x" (TName Nothing (TCon "Int" [])))
@@ -194,6 +197,7 @@ pParam = try pNamed <|> pAnon
   where
     pNamed :: Parser FnParam
     pNamed = do
+      isMut <- option False (reserved RWMut $> True)
       nm <- identifier
       isOptional <- option False (reservedOp OpQuestion $> True)
       unless isOptional $ reservedOp OpTilde
@@ -201,10 +205,12 @@ pParam = try pNamed <|> pAnon
       ty <- pType
       au <- option False (try (pPAutoFill $> True))
       de <- option False (try (pPDefault $> True))
-      return $ NamedParam nm (if isOptional then TName Nothing $ TCon "Option" [ty] else ty) de au
+      return $ NamedParam isMut nm (if isOptional then TName Nothing $ TCon "Option" [ty] else ty) de au
 
     pAnon :: Parser FnParam
-    pAnon = AnonParam <$> pType
+    pAnon = do
+      isMut <- option False (reserved RWMut $> True)
+      AnonParam isMut <$> pType
 
 -- parse the FnKind + plain name
 pKindName :: Parser (FnKind, Name)
@@ -252,7 +258,7 @@ pTraitMethod trait = do
   return $ FnDecl' sig [] (TraitMethod trait de)
 
 -- >>> parse pTraitDecl "" "pub(open) trait Compare : Eq { compare(Self, Self) -> Int = _ }"
--- Right (TraitDecl VisPubOpen (TTrait Nothing "Compare") [CTrait (TTrait Nothing "Eq")] [FnDecl' {fnSig = FnSig {funName = "compare", funParams = [AnonParam (TName Nothing (TCon "Self" [])),AnonParam (TName Nothing (TCon "Self" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = TraitMethod (TTrait Nothing "Compare") True}])
+-- Right (TraitDecl VisPubOpen (TTrait Nothing "Compare") [CTrait (TTrait Nothing "Eq")] [FnDecl' {fnSig = FnSig {funName = "compare", funParams = [AnonParam False (TName Nothing (TCon "Self" [])),AnonParam False (TName Nothing (TCon "Self" []))], funReturnType = TName Nothing (TCon "Int" []), funTyParams = [], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = TraitMethod (TTrait Nothing "Compare") True}])
 
 pTraitDecl :: Parser Decl
 pTraitDecl = do
@@ -264,7 +270,7 @@ pTraitDecl = do
   return $ TraitDecl vis trait cs methods
 
 -- >>> parse pEnumDecl "" "pub(all) enum MyEnum[T] { A(T) B(T, fuck~ : T) }"
--- Right (EnumDecl VisPubAll (TName Nothing (TCon "MyEnum" [TName Nothing (TCon "T" [])])) [("A",[AnonParam (TName Nothing (TCon "T" []))]),("B",[AnonParam (TName Nothing (TCon "T" [])),NamedParam "fuck" (TName Nothing (TCon "T" [])) False False])])
+-- Right (EnumDecl VisPubAll (TName Nothing (TCon "MyEnum" [TName Nothing (TCon "T" [])])) [("A",[AnonParam False (TName Nothing (TCon "T" []))]),("B",[AnonParam False (TName Nothing (TCon "T" [])),NamedParam False "fuck" (TName Nothing (TCon "T" [])) False False])])
 
 pEnumDecl :: Parser Decl
 pEnumDecl = do
@@ -281,7 +287,7 @@ enumVariant = do
   return (nm, elems)
 
 -- >>> parse pErrorTypeDecl "" "pub suberror Eff { Get((Int) -> Unit) Set(Int, (Unit) -> Unit) }"
--- Right (ErrorTypeDecl VisPub "Eff" (ETEnumPayload [("Get",[AnonParam (TFun [TName Nothing (TCon "Int" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])]),("Set",[AnonParam (TName Nothing (TCon "Int" [])),AnonParam (TFun [TName Nothing (TCon "Unit" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])])]))
+-- Right (ErrorTypeDecl VisPub "Eff" (ETEnumPayload [("Get",[AnonParam False (TFun [TName Nothing (TCon "Int" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])]),("Set",[AnonParam False (TName Nothing (TCon "Int" [])),AnonParam False (TFun [TName Nothing (TCon "Unit" [])] (TName Nothing (TCon "Unit" [])) [EffException NoAraise])])]))
 
 pErrorTypeDecl :: Parser Decl
 pErrorTypeDecl = do
@@ -331,7 +337,7 @@ pTraitAliasDecl = do
   TraitAliasDecl vis orig <$> pTTrait
 
 -- >>> parse pStructDecl "" "pub(all) struct SparseArray[X] { elem_info : Bitset \n data : FixedArray[X] }"
--- Right (StructDecl VisPubAll (TName Nothing (TCon "SparseArray" [TName Nothing (TCon "X" [])])) [("elem_info",TName Nothing (TCon "Bitset" [])),("data",TName Nothing (TCon "FixedArray" [TName Nothing (TCon "X" [])]))])
+-- Right (StructDecl VisPubAll (TName Nothing (TCon "SparseArray" [TName Nothing (TCon "X" [])])) [("elem_info",TName Nothing (TCon "Bitset" []),False),("data",TName Nothing (TCon "FixedArray" [TName Nothing (TCon "X" [])]),False)])
 
 pStructDecl :: Parser Decl
 pStructDecl = do
@@ -342,10 +348,11 @@ pStructDecl = do
   return $ StructDecl vis name fields
   where
     fieldDecl = do
+      isMut <- option False (reserved RWMut $> True)
       nm <- identifier
       _ <- reservedOp OpColon
       ty <- pType
-      return (nm, ty)
+      return (nm, ty, isMut)
 
 pVisibility :: Parser Visibility
 pVisibility = do
@@ -366,16 +373,16 @@ pVisibility = do
     priv = reserved RWPriv $> VisPriv
 
 -- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
--- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [AnonParam (TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),AnonParam (TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
+-- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [AnonParam False (TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),AnonParam False (TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})
 
 -- >>> parse pFnDecl "" "fn inspect(&ToJson, content~ : Json, loc~ : SourceLoc = _, args_loc~ : ArgsLoc = _) -> Unit raise InspectError"
--- Right (FnDecl' {fnSig = FnSig {funName = "inspect", funParams = [AnonParam (TDynTrait (TTrait Nothing "ToJson")),NamedParam "content" (TName Nothing (TCon "Json" [])) False False,NamedParam "loc" (TName Nothing (TCon "SourceLoc" [])) False True,NamedParam "args_loc" (TName Nothing (TCon "ArgsLoc" [])) False True], funReturnType = TName Nothing (TCon "Unit" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "InspectError" [])))]}, fnAttr = [], fnKind = FreeFn})
+-- Right (FnDecl' {fnSig = FnSig {funName = "inspect", funParams = [AnonParam False (TDynTrait (TTrait Nothing "ToJson")),NamedParam False "content" (TName Nothing (TCon "Json" [])) False False,NamedParam False "loc" (TName Nothing (TCon "SourceLoc" [])) False True,NamedParam False "args_loc" (TName Nothing (TCon "ArgsLoc" [])) False True], funReturnType = TName Nothing (TCon "Unit" []), funTyParams = [], funEff = [EffException (Araise (TName Nothing (TCon "InspectError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pFnDecl "" "fn[T : @quickcheck.Arbitary + FromJson] from_json(Json, path~ : JsonPath = ..) -> T raise JsonDecodeError"
--- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [AnonParam (TName Nothing (TCon "Json" [])),NamedParam "path" (TName Nothing (TCon "JsonPath" [])) True False], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (TTrait (Just (TPath [] "quickcheck")) "Arbitary"),CTrait (TTrait Nothing "FromJson")])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
+-- Right (FnDecl' {fnSig = FnSig {funName = "from_json", funParams = [AnonParam False (TName Nothing (TCon "Json" [])),NamedParam False "path" (TName Nothing (TCon "JsonPath" [])) True False], funReturnType = TName Nothing (TCon "T" []), funTyParams = [(TCon "T" [],[CTrait (TTrait (Just (TPath [] "quickcheck")) "Arbitary"),CTrait (TTrait Nothing "FromJson")])], funEff = [EffException (Araise (TName Nothing (TCon "JsonDecodeError" [])))]}, fnAttr = [], fnKind = FreeFn})
 
 -- >>> parse pFnDecl "" "fn[T] Option::flatten(T??) -> T?"
--- Right (FnDecl' {fnSig = FnSig {funName = "flatten", funParams = [AnonParam (TName Nothing (TCon "Option" [TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])])]))], funReturnType = TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])]), funTyParams = [(TCon "T" [],[])], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = Method (TName Nothing (TCon "Option" []))})
+-- Right (FnDecl' {fnSig = FnSig {funName = "flatten", funParams = [AnonParam False (TName Nothing (TCon "Option" [TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])])]))], funReturnType = TName Nothing (TCon "Option" [TName Nothing (TCon "T" [])]), funTyParams = [(TCon "T" [],[])], funEff = [EffException NoAraise]}, fnAttr = [], fnKind = Method (TName Nothing (TCon "Option" []))})
 
 -- >>> parse pPackageDecl "" "package \"user/repo/path/to/module\""
 -- Right (ModulePath {mpUserName = "user", mpModuleName = "repo", mpPackagePath = ["path","to","module"]})
@@ -394,7 +401,7 @@ pImportDecl = reserved RWImport *> parens (many $ spaces *> pQuotedModulePath <*
 
 pModulePath :: Parser ModulePath
 pModulePath = do
-  segments <- identifier `sepBy1` slash
+  segments <- rawIdent `sepBy1` slash
   case segments of
     user : modName : pName1 : rest -> return $ ModulePath user modName (pName1 : rest) -- make sure to have at least 1 segment after the module name
     _ -> parserFail "module path must be in the form ‘user/modname/path"

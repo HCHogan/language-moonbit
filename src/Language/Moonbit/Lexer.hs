@@ -27,6 +27,7 @@ module Language.Moonbit.Lexer (
   natural,
   charLiteral,
   octal,
+  rawIdent,
 ) where
 
 import Data.Functor.Identity
@@ -78,6 +79,7 @@ data ReservedWord
   | RWPub
   | RWPriv
   | RWFnAlias
+  | RWMut
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | All of the reserved operator symbols in the language
@@ -151,6 +153,7 @@ reservedWordToString = \case
   RWPub -> "pub"
   RWPriv -> "priv"
   RWFnAlias -> "fnalias"
+  RWMut -> "mut"
 
 reservedOpToString :: ReservedOp -> String
 reservedOpToString = \case
@@ -189,9 +192,8 @@ reservedWords = reservedWordToString <$> [minBound .. maxBound]
 reservedOps :: [String]
 reservedOps = reservedOpToString <$> [minBound .. maxBound]
 
-lexer :: Tok.GenTokenParser L.Text () Identity
-lexer =
-  Tok.makeTokenParser $
+moonbitLangDef :: Tok.GenLanguageDef L.Text u Identity
+moonbitLangDef = 
     Tok.LanguageDef
       { Tok.commentStart = ""
       , Tok.commentEnd = ""
@@ -205,6 +207,9 @@ lexer =
       , Tok.reservedOpNames = reservedOps
       , Tok.caseSensitive = True
       }
+
+lexer :: Tok.GenTokenParser L.Text () Identity
+lexer = Tok.makeTokenParser moonbitLangDef
 
 reserved :: ReservedWord -> Parser ()
 reserved w = Tok.reserved lexer (reservedWordToString w)
@@ -268,6 +273,12 @@ symbol = Tok.symbol lexer
 
 slash :: Parser String
 slash = symbol "/"
+
+rawIdent :: Parser String
+rawIdent = Tok.lexeme lexer $ do
+  c  <- Tok.identStart  moonbitLangDef
+  cs <- many (Tok.identLetter moonbitLangDef)
+  pure (c:cs)
 
 contents :: Parser a -> Parser a
 contents p = do

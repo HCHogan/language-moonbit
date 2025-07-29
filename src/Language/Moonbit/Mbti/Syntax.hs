@@ -32,7 +32,7 @@ data Decl
   | LetDecl Name Type
   | TypeDecl Visibility Type (Maybe Type) -- opaque or newtype
   | TypeAliasDecl Visibility Type Type -- original type, alias name
-  | StructDecl Visibility Type [(Name, Type)]
+  | StructDecl Visibility Type [(Name, Type, Bool)] -- Bool indicates whether the field is mutable
   | EnumDecl Visibility Type [(Name, [FnParam])]
   | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
@@ -103,10 +103,10 @@ data FnSig = FnSig
   }
   deriving (Eq, Show)
 
-data FnParam
-  = AnonParam Type -- Anonymous parameter, e.g. `Type`
-  | NamedParam Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
-  deriving (Eq, Show)
+data FnParam 
+  = AnonParam Bool Type -- Anonymous parameter, e.g. `Type`
+  | NamedParam Bool Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
+  deriving (Eq, Show) -- NOTE: Bool indicates whether the parameter is mutable
 
 newtype FnAttr
   = Deprecated (Maybe String) -- #deprecated("reason")
