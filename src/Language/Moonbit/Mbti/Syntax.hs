@@ -33,9 +33,8 @@ data Decl
     ConstDecl Name Type
   | TypeDecl Type
   | TypeAliasDecl Visibility Type Type -- original type, alias name
-
-    -- \| StructDecl
-  |  EnumDecl Visibility Type [(Name, [FnParam])]
+  | StructDecl Visibility Type [(Name, Type)]
+  | EnumDecl Visibility Type [(Name, [FnParam])]
   | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   | TraitAliasDecl Visibility TTrait TTrait

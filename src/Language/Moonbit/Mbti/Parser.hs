@@ -302,6 +302,23 @@ pTraitAliasDecl = do
   _ <- reserved RWAs
   TraitAliasDecl vis orig <$> pTTrait
 
+-- >>> parse pStructDecl "" "pub(all) struct SparseArray[X] { elem_info : Bitset \n data : FixedArray[X] }"
+-- Right (StructDecl VisPubAll (TName Nothing (TCon "SparseArray" [TName Nothing (TCon "X" [])])) [("elem_info",TName Nothing (TCon "Bitset" [])),("data",TName Nothing (TCon "FixedArray" [TName Nothing (TCon "X" [])]))])
+
+pStructDecl :: Parser Decl
+pStructDecl = do
+  vis <- pVisibility 
+  _ <- reserved RWStruct
+  name <- pType
+  fields <- braces (many fieldDecl)
+  return $ StructDecl vis name fields
+  where
+    fieldDecl = do
+      nm <- identifier
+      _ <- reservedOp OpColon
+      ty <- pType
+      return (nm, ty)
+
 pVisibility :: Parser Visibility
 pVisibility = do
   option VisPriv ((try pubOpen <|> try pubAll <|> try pub <|> priv) <?> "visibility specifier")
