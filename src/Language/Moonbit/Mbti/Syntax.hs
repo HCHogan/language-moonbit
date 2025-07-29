@@ -28,9 +28,7 @@ data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
 data Decl
   = FnDecl FnDecl'
   | ImplForTypeDecl ImplSig
-  | -- \| DefaultImplDecl
-
-    ConstDecl Name Type
+  | ConstDecl Name Type
   | TypeDecl Type
   | TypeAliasDecl Visibility Type Type -- original type, alias name
   | StructDecl Visibility Type [(Name, Type)]

@@ -307,7 +307,7 @@ pTraitAliasDecl = do
 
 pStructDecl :: Parser Decl
 pStructDecl = do
-  vis <- pVisibility 
+  vis <- pVisibility
   _ <- reserved RWStruct
   name <- pType
   fields <- braces (many fieldDecl)
