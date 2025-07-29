@@ -280,6 +280,17 @@ pErrorTypeDecl = do
 
     enumPayload = ETEnumPayload <$> braces (many enumVariant)
 
+-- >>> parse pTypeAliasDecl "" "pub typealias @moonbitlang/core/bigint.BigInt as BigInt"
+-- Right (TypeAliasDecl VisPub (TName (Just (TPath ["moonbitlang","core"] "bigint")) (TCon "BigInt" [])) (TName Nothing (TCon "BigInt" [])))
+
+pTypeAliasDecl :: Parser Decl
+pTypeAliasDecl = do
+  vis <- pVisibility
+  _ <- reserved RWTypealias
+  orig <- pType
+  _ <- reserved RWAs
+  TypeAliasDecl vis orig <$> pType
+
 pVisibility :: Parser Visibility
 pVisibility = do
   option VisPriv ((try pubOpen <|> try pubAll <|> try pub <|> priv) <?> "visibility specifier")
