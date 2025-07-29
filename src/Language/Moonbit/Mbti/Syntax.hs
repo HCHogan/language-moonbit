@@ -13,6 +13,7 @@ module Language.Moonbit.Mbti.Syntax (
   FnAttr (..),
   TPath (..),
   FnDecl' (..),
+  TTrait (..),
 )
 where
 
@@ -32,7 +33,7 @@ data Decl
   -- \| StructDecl
   -- \| EnumDecl
   -- \| ErrorTypeDecl
-  -- \| TraitDecl
+  | TraitDecl
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
@@ -58,6 +59,7 @@ data Type
   = TName (Maybe TPath) TCon
   | TFun [Type] Type [Effect]
   | TTuple [Type]
+  | TDynTrait TTrait
   deriving (Eq, Show)
 
 data TPath = TPath [Name] Name -- path + module name
@@ -66,8 +68,11 @@ data TPath = TPath [Name] Name -- path + module name
 data TCon = TCon Name [Type]
   deriving (Eq, Show)
 
-data Constraint
-  = CTrait (Maybe TPath) Name
+newtype Constraint
+  = CTrait TTrait
+  deriving (Eq, Show)
+
+data TTrait = TTrait (Maybe TPath) Name
   deriving (Eq, Show)
 
 data FnKind
