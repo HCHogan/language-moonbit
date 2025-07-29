@@ -86,7 +86,7 @@ pEffectException =
     <|> try (reserved RWNoRaise $> NoAraise)
     <|> do
       reserved RWRaise
-      Araise <$> pType
+      Araise <$> option (TName Nothing $ TCon "Error" []) pType
     <?> "exception effect (raise?, noaraise or raise T)"
 
 pTTuple :: Parser Type
@@ -124,8 +124,8 @@ pTNonFun = do
 -- >>> parse pTFun "" "async (K, V) -> V raise E"
 -- Right (TFun [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])] (TName Nothing (TCon "V" [])) [EffAsync,EffException (Araise (TName Nothing (TCon "E" [])))])
 
--- >>> parse pTFun "" "(T[(&Show) -> Int, String], Bool) -> String?"
--- Right (TFun [TName Nothing (TCon "T" [TFun [TDynTrait (TTrait Nothing "Show")] (TName Nothing (TCon "Int" [])) [EffException NoAraise],TName Nothing (TCon "String" [])]),TName Nothing (TCon "Bool" [])] (TName Nothing (TCon "Option" [TName Nothing (TCon "String" [])])) [EffException NoAraise])
+-- >>> parse pTFun "" "(T[(&Show) -> Int, String], Bool) -> String? raise"
+-- Right (TFun [TName Nothing (TCon "T" [TFun [TDynTrait (TTrait Nothing "Show")] (TName Nothing (TCon "Int" [])) [EffException NoAraise],TName Nothing (TCon "String" [])]),TName Nothing (TCon "Bool" [])] (TName Nothing (TCon "Option" [TName Nothing (TCon "String" [])])) [EffException (Araise (TName Nothing (TCon "Error" [])))])
 
 -- >>> parse pTFun "" "async (@btree/btree.T) -> U noaraise"
 -- Right (TFun [TName (Just (TPath ["btree"] "btree")) (TCon "T" [])] (TName Nothing (TCon "U" [])) [EffAsync,EffException NoAraise])
@@ -219,6 +219,10 @@ pFnDecl = do
   let effects = [EffAsync | isAsync] ++ [EffException effEx]
   let sig = FnSig {funName = nm, funParams = params, funReturnType = retTy, funTyParams = typs, funEff = effects}
   return $ FnDecl' sig attrs kind
+
+-- pTraitMethod :: Parser FnDecl'
+-- pTraitMethod = do
+--   identifier
 
 -- >>> parse pFnDecl "" "#deprecated async fn[A, B] Decimal::parse_decimal(T[A, Int], String) -> Self raise StrConvError"
 -- Right (FnDecl' {fnSig = FnSig {funName = "parse_decimal", funParams = [AnonParam (TName Nothing (TCon "T" [TName Nothing (TCon "A" []),TName Nothing (TCon "Int" [])])),AnonParam (TName Nothing (TCon "String" []))], funReturnType = TName Nothing (TCon "Self" []), funTyParams = [(TCon "A" [],[]),(TCon "B" [],[])], funEff = [EffAsync,EffException (Araise (TName Nothing (TCon "StrConvError" [])))]}, fnAttr = [Deprecated Nothing], fnKind = Method (TName Nothing (TCon "Decimal" []))})

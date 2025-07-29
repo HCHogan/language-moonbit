@@ -35,7 +35,7 @@ data Decl
   -- \| StructDecl
   -- \| EnumDecl
   -- \| ErrorTypeDecl
-  -- | TraitDecl
+  | TraitDecl Name [FnDecl']
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
