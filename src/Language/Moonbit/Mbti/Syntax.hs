@@ -38,7 +38,7 @@ data Decl
   |  EnumDecl Visibility Type [(Name, [FnParam])]
   | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
-  -- \| TraitAliasDecl
+  | TraitAliasDecl Visibility TTrait TTrait
   deriving
     ( -- | FunAliasDecl
       Show,

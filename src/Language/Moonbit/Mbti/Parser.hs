@@ -291,6 +291,17 @@ pTypeAliasDecl = do
   _ <- reserved RWAs
   TypeAliasDecl vis orig <$> pType
 
+-- >>> parse pTraitAliasDecl "" "pub traitalias @builtin.BitXOr as BitXOr"
+-- Right (TraitAliasDecl VisPub (TTrait (Just (TPath [] "builtin")) "BitXOr") (TTrait Nothing "BitXOr"))
+
+pTraitAliasDecl :: Parser Decl
+pTraitAliasDecl = do
+  vis <- pVisibility
+  _ <- reserved RWTraitalias
+  orig <- pTTrait
+  _ <- reserved RWAs
+  TraitAliasDecl vis orig <$> pTTrait
+
 pVisibility :: Parser Visibility
 pVisibility = do
   option VisPriv ((try pubOpen <|> try pubAll <|> try pub <|> priv) <?> "visibility specifier")
