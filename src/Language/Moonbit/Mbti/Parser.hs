@@ -38,6 +38,17 @@ pTypeDecl = do
   tyargs <- option [] (brackets (commaSep identifier))
   return $ TypeDecl (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs))
 
+-- >>> parse pImplForTypeDecl "" "impl[K: Compare + Eq, V : Show] Div for Node[K, V]"
+-- Right (ImplForTypeDecl (ImplSig [(TCon "K" [],[CTrait (TTrait Nothing "Compare"),CTrait (TTrait Nothing "Eq")]),(TCon "V" [],[CTrait (TTrait Nothing "Show")])] (TTrait Nothing "Div") (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])]))))
+
+pImplForTypeDecl :: Parser Decl
+pImplForTypeDecl = do
+  _ <- reserved RWImpl
+  typs <- option [] pTyParams
+  trait <- pTTrait
+  _ <- reserved RWFor
+  ImplForTypeDecl . ImplSig typs trait <$> pType
+
 pTFun :: Parser Type
 pTFun = do
   isAsync <- option False (reserved RWAsync $> True)
@@ -109,11 +120,6 @@ pType =
     , pTNonFun
     ]
     <?> "type"
-
--- pFnSig :: Parser FnSig
--- pFnSig = do
--- isAsync <- option False (reserved RWAsync $> True)
--- _ <- reserved RWFn
 
 -- skip a default value (`= ..`)
 skipDefault :: Parser ()

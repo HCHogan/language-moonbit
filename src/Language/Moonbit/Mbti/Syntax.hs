@@ -14,6 +14,7 @@ module Language.Moonbit.Mbti.Syntax (
   TPath (..),
   FnDecl' (..),
   TTrait (..),
+  ImplSig (..),
 )
 where
 
@@ -23,23 +24,27 @@ data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
 
 data Decl
   = FnDecl FnDecl'
-  | -- \| ImplForTypeDecl
+  | ImplForTypeDecl ImplSig
     -- \| DefaultImplDecl
 
     -- \| ConstDecl
-    TypeDecl Type
+  | TypeDecl Type
   -- \| TypeAliasDecl
 
   -- \| StructDecl
   -- \| EnumDecl
   -- \| ErrorTypeDecl
-  | TraitDecl
+  -- | TraitDecl
   -- \| TraitAliasDecl
   deriving
     ( -- | FunAliasDecl
       Show
     , Eq
     )
+
+-- impl[K, V] Trait for T[K, V]
+data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
+  deriving (Show, Eq)
 
 data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
   deriving (Show, Eq)
@@ -78,6 +83,7 @@ data TTrait = TTrait (Maybe TPath) Name
 data FnKind
   = FreeFn
   | Method Type -- impl For which type
+  | TraitMethod Bool -- whether have default impl
   deriving (Eq, Show)
 
 -- \| TraitMethod
