@@ -1,6 +1,6 @@
 # language-moonbit
 
-**IMPORTANT: Now I only implemented parsing logic for `.mbti` files.**
+**IMPORTANT: Currently only `.mbti` parser are implemented.**
 
 <!-- [![Haskell CI](https://github.com/Hustcer/language-moonbit/actions/workflows/haskell.yml/badge.svg)](https://github.com/Hustcer/language-moonbit/actions/workflows/haskell.yml) -->
 <!-- [![Hackage](https://img.shields.io/hackage/v/language-moonbit.svg)](https://hackage.haskell.org/package/language-moonbit) -->
