@@ -47,11 +47,12 @@ pConstDecl = do
   name <- identifier
   _ <- reservedOp OpColon
   ty <- pType
-  skipLine
+  optional skipLine
+  whiteSpace
   return $ ConstDecl name ty
   where
-    skipLine :: Parser ()
-    skipLine = void $ manyTill anyChar (try (void newline) <|> eof)
+    skipLine :: Parser () -- HACK: this is a hack to skip the rest of the line after the type declaration
+    skipLine = void $ manyTill anyChar (void endOfLine <|> eof)
 
 -- >>> parse pLetDecl "" "let x : Int = 42"
 -- Right (LetDecl "x" (TName Nothing (TCon "Int" [])))
@@ -111,7 +112,7 @@ pTTuple = TTuple <$> parens (commaSep pType)
 pTPath :: Parser TPath
 pTPath = do
   _ <- symbol "@"
-  segs <- identifier `sepBy1` slash
+  segs <- pModuleSeg `sepBy1` slash
   return $ TPath (init segs) (last segs) -- SAFETY: sepBy1 ensures at least one segment
 
 pTCon :: Parser TCon
@@ -401,10 +402,16 @@ pImportDecl = reserved RWImport *> parens (many $ spaces *> pQuotedModulePath <*
 
 pModulePath :: Parser ModulePath
 pModulePath = do
-  segments <- rawIdent `sepBy1` slash
+  segments <- pModuleSeg `sepBy1` slash
   case segments of
-    user : modName : pName1 : rest -> return $ ModulePath user modName (pName1 : rest) -- make sure to have at least 1 segment after the module name
-    _ -> parserFail "module path must be in the form ‘user/modname/path"
+    user : modName : rest -> return $ ModulePath user modName rest
+    _ -> parserFail "module path must be in the form ‘user/modname(/path)"
+
+pModuleSeg :: Parser String
+pModuleSeg = do
+  first <- alphaNum <|> char '_'
+  rest  <- many (alphaNum <|> char '-' <|> char '_')
+  pure $ first : rest
 
 pQuotedModulePath :: Parser ModulePath
 pQuotedModulePath = between (char '"') (char '"') pModulePath

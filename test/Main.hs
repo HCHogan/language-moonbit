@@ -30,6 +30,7 @@ main :: IO ()
 main = do
   home <- getHomeDirectory
   let coreRoot = home </> ".moon" </> "lib" </> "core"
+  -- let coreRoot = home </> ".moongle" </> "packages"
 
   mbtiFiles <- collectMbti coreRoot
 
