@@ -1,127 +1,374 @@
-module Language.Moonbit.Mbti.Syntax
-  ( MbtiFile (..),
-    Decl (..),
-    ModulePath (..),
-    Effect (..),
-    EffectException (..),
-    Type (..),
-    TCon (..),
-    Constraint (..),
-    FnKind (..),
-    Name,
-    FnSig (..),
-    FnAttr (..),
-    TPath (..),
-    FnDecl' (..),
-    TTrait (..),
-    ImplSig (..),
-    FnParam (..),
-    Visibility (..),
-    ErrorType (..),
-  )
-where
+{-# LANGUAGE DeriveGeneric #-}
 
--- | This module defines the syntax for the Moonbit type inference system (Mbti).
-data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
-  deriving (Show, Eq)
+module Language.Moonbit.Mbti.Syntax (
+  -- * 基础
+  Position (..),
+  SrcSpan (..),
+  Located (..),
+  lmap,
 
-data Decl
-  = FnDecl FnDecl'
-  | ImplForTypeDecl ImplSig
-  | ConstDecl Name Type
-  | LetDecl Name Type
-  | TypeDecl Visibility Type (Maybe Type) -- opaque or newtype
-  | TypeAliasDecl Visibility Type Type -- original type, alias name
-  | StructDecl Visibility Type [(Name, Type, Bool)] -- Bool indicates whether the field is mutable
-  | EnumDecl Visibility Type [(Name, [FnParam])]
-  | ErrorTypeDecl Visibility Name ErrorType
-  | TraitDecl Visibility TTrait [Constraint] [FnDecl']
-  | TraitAliasDecl Visibility TTrait TTrait
-  | FnAliasDecl Visibility (Maybe TPath) Type Name
-  deriving (Show, Eq)
+  -- * 名称相关
+  Name (..),
+  Qualified (..),
+  Visibility (..),
 
--- impl[K, V] Trait for T[K, V]
-data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
-  deriving (Show, Eq)
+  -- * 顶层结构
+  Module (..),
+  PackageImport (..),
 
-data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
-  deriving (Show, Eq)
+  -- * 各类签名
+  Sig (..),
+  FuncSig (..),
+  ValueSig (..),
+  ConstSig (..),
+  TypeSig (..),
+  TypeDeclComp (..),
+  ExceptionDecl (..),
+  AliasSig (..),
+  ImplSig (..),
+  TraitSig (..),
+  TraitMethodSig (..),
 
-data ErrorType
-  = ETNoPayload
-  | ETSinglePayload Type
-  | ETEnumPayload [(Name, [FnParam])]
-  deriving (Show, Eq)
+  -- * 类型 & 参数
+  Type (..),
+  ErrorType (..),
+  ReturnType (..),
+  TypeParam (..),
+  TypeParamNC (..),
+  TypeConstraint (..),
+  Parameter (..),
+  TraitParam (..),
 
-data Effect
-  = EffAsync
-  | EffException EffectException
-  deriving (Show, Eq)
+  -- * 其他
+  EnumConstr (..),
+  ConstrParam (..),
+  RecordField (..),
+  Constant (..),
+) where
 
-data EffectException
-  = NoAraise
-  | Araise Type
-  | AraisePoly
-  deriving (Show, Eq)
+import Data.ByteString (ByteString)
+import Data.Int (Int64)
+import Data.Text (Text)
+import GHC.Generics (Generic)
 
-data Type
-  = TName (Maybe TPath) TCon
-  | TFun [Type] Type [Effect]
-  | TTuple [Type]
-  | TDynTrait TTrait
-  deriving (Eq, Show)
+--------------------------------------------------------------------------------
+-- 基础位置类型
+--------------------------------------------------------------------------------
 
-data TPath = TPath [Name] Name -- path + module name
-  deriving (Eq, Show)
-
-data TCon = TCon Name [Type]
-  deriving (Eq, Show)
-
-newtype Constraint
-  = CTrait TTrait
-  deriving (Eq, Show)
-
-data TTrait = TTrait (Maybe TPath) Name
-  deriving (Eq, Show)
-
-data FnKind
-  = FreeFn
-  | Method Type -- impl For which type
-  | TraitMethod TTrait Bool -- whether have default impl
-  deriving (Eq, Show)
-
--- \| TraitMethod
-
-type Name = String
-
-data FnSig = FnSig
-  { funName :: Name,
-    funParams :: [FnParam],
-    funReturnType :: Type,
-    funTyParams :: [(TCon, [Constraint])],
-    funEff :: [Effect]
+data Position = Position
+  { posFile :: !Text
+  , posLine :: !Int
+  , posColumn :: !Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show, Generic)
 
-data FnParam 
-  = AnonParam Bool Type -- Anonymous parameter, e.g. `Type`
-  | NamedParam Bool Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
-  deriving (Eq, Show) -- NOTE: Bool indicates whether the parameter is mutable
-
-newtype FnAttr
-  = Deprecated (Maybe String) -- #deprecated("reason")
-  deriving (Eq, Show)
-
-data FnDecl' = FnDecl'
-  { fnSig :: FnSig,
-    fnAttr :: [FnAttr],
-    fnKind :: FnKind
+data SrcSpan = SrcSpan
+  { spanStart :: !Position
+  -- ^ inclusive
+  , spanEnd :: !Position
+  -- ^ exclusive
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+-- | 带位置信息的包装
+data Located a = L
+  { locSpan :: !SrcSpan
+  , locThing :: a
+  }
+  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+-- | map 内部值同时保留位置信息
+lmap :: (a -> b) -> Located a -> Located b
+lmap f (L s x) = L s (f x)
+
+--------------------------------------------------------------------------------
+-- 名称与可见性
+--------------------------------------------------------------------------------
+
+-- | 简单（未限定）名字，附带源位置
+data Name = Name
+  { nText :: !Text
+  , nLoc :: !SrcSpan
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+-- | 可能带包名前缀的限定名字
+data Qualified
+  = -- | 形如  Foo
+    QSimple (Located Name)
+  | -- | 形如  pkg.Foo
+    QDotPkg !(Located Text) !(Located Name)
+  deriving (Eq, Show, Generic)
 
 data Visibility
-  = VisPub
-  | VisPubOpen
-  | VisPriv
-  | VisPubAll
-  deriving (Eq, Show)
+  = VisDefault
+  | -- | 记录 "priv" 关键字位置
+    VisPriv !(Located ())
+  | -- | 记录 "pub" [attr]
+    VisPub !(Maybe Text) !(Located ())
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 顶层模块
+--------------------------------------------------------------------------------
+
+data Module = Module
+  { mPkgName :: !Text
+  -- ^ package "foo.bar"
+  , mImports :: ![PackageImport]
+  , mSigs :: ![Located Sig]
+  , mLoc :: !SrcSpan
+  -- ^ 整个文件 span
+  }
+  deriving (Eq, Show, Generic)
+
+data PackageImport = PackageImport
+  { impName :: !Text
+  , impAlias :: !(Maybe Text)
+  , impLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 顶层签名
+--------------------------------------------------------------------------------
+
+data Sig
+  = SigFunc !(Located FuncSig)
+  | SigType !(Located TypeSig)
+  | SigAlias !(Located AliasSig)
+  | SigTrait !(Located TraitSig)
+  | SigImpl !(Located ImplSig)
+  | SigConst !(Located ConstSig)
+  | SigValue !(Located ValueSig)
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 1. 函数 & 常量 & 值
+--------------------------------------------------------------------------------
+
+data FuncSig = FuncSig
+  { fsAsync :: !Bool
+  , fsTypeName :: !(Maybe (Located Name))
+  -- ^ Optional  Foo::
+  , fsName :: !(Located Name)
+  , fsTyParams :: ![TypeParam]
+  -- ^ [T: Trait + ...]
+  , fsParams :: ![Parameter]
+  , fsReturn :: !ReturnType
+  , fsLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+data ValueSig = ValueSig
+  { vsName :: !(Located Name)
+  , vsType :: !Type
+  }
+  deriving (Eq, Show, Generic)
+
+data ConstSig = ConstSig
+  { csName :: !(Located Name)
+  , csType :: !Type
+  , csValue :: !Constant
+  }
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 2. 类型声明
+--------------------------------------------------------------------------------
+
+data TypeSig = TypeSig
+  { tsVis :: !Visibility
+  , tsName :: !(Located Name)
+  , tsTyParams :: ![TypeParamNC]
+  -- ^ 没有约束的参数 (T, _, …)
+  , tsComponent :: !TypeDeclComp
+  , tsLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+data TypeDeclComp
+  = TDExtern
+  | TDAbstract
+  | TDNewtype !Type
+  | TDError !ExceptionDecl
+  | TDRecord ![RecordField]
+  | TDVariant ![EnumConstr]
+  deriving (Eq, Show, Generic)
+
+data ExceptionDecl
+  = NoPayload
+  | SinglePayload !Type
+  | EnumPayload ![EnumConstr]
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 3. Alias / Impl / Trait
+--------------------------------------------------------------------------------
+
+data AliasSig
+  = TypeAlias
+      { alVis :: !Visibility
+      , alName :: !(Located Name)
+      , alTyParams :: ![TypeParamNC]
+      , alType :: !Type
+      , alLoc :: !SrcSpan
+      }
+  | TraitAlias
+      { alVis :: !Visibility
+      , alName :: !(Located Name)
+      , alTrait :: !Qualified
+      , alLoc :: !SrcSpan
+      }
+  | FuncAlias
+      { faTypeName :: !(Located Name)
+      -- ^ Foo::
+      , faName :: !(Located Name)
+      , faLoc :: !SrcSpan
+      }
+  deriving (Eq, Show, Generic)
+
+data ImplSig = ImplSig
+  { imTyParams :: ![TypeParam]
+  -- ^ 可为空
+  , imTrait :: !Qualified
+  , imFor :: !Type
+  , imLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+data TraitSig = TraitSig
+  { trVis :: !Visibility
+  , trName :: !(Located Name)
+  , trSupers :: ![Qualified]
+  -- ^ 父 trait
+  , trMethods :: ![Located TraitMethodSig]
+  , trLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+data TraitMethodSig = TraitMethodSig
+  { tmName :: !(Located Name)
+  , tmParams :: ![TraitParam]
+  , tmReturn :: !ReturnType
+  , tmHasDefault :: !Bool
+  , tmLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 4. 类型系统
+--------------------------------------------------------------------------------
+
+data Type
+  = -- | T?
+    TyOption !SrcSpan !Type
+  | -- | (A, B, …)
+    TyTuple !SrcSpan ![Type]
+  | -- | Foo[T, U]
+    TyName !SrcSpan !Qualified ![Type]
+  | -- | &Foo
+    TyObject !Qualified
+  | -- | _
+    TyAny !SrcSpan
+  | TyArrow
+      { tyLoc :: !SrcSpan
+      , tyAsync :: !Bool
+      , tyArgs :: ![Type]
+      -- ^ 可以为空
+      , tyResult :: !Type
+      , tyError :: !ErrorType
+      }
+  deriving (Eq, Show, Generic)
+
+data ErrorType
+  = NoError
+  | -- | ! / raise
+    DefaultError {etOldSyntax :: !Bool}
+  | ExplicitError {etType :: !Type, etOldSyntax :: !Bool}
+  | MaybeError {etType :: !Type, etOldSyntax :: !Bool}
+  deriving (Eq, Show, Generic)
+
+data ReturnType = ReturnType
+  { rtResult :: !Type
+  , rtError :: !ErrorType
+  }
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 5. 类型参数 & 约束
+--------------------------------------------------------------------------------
+
+data TypeConstraint = TCQualified !Qualified
+  deriving (Eq, Show, Generic)
+
+data TypeParam = TypeParam
+  { tpName :: !(Located Name)
+  , tpConstraints :: ![TypeConstraint]
+  }
+  deriving (Eq, Show, Generic)
+
+data TypeParamNC -- 无约束版本（带下划线）
+  = TPNamed !(Located Name)
+  | TPUnderscore !SrcSpan
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 6. 函数 / 方法参数
+--------------------------------------------------------------------------------
+
+data Parameter
+  = PPositional !Type
+  | PLabelled !(Located Name) !Type
+  | POptDefault !(Located Name) !Type -- label = ..
+  | PAutofill !(Located Name) !Type -- label = _
+  | POptOption !(Located Name) !Type -- label?:
+  deriving (Eq, Show, Generic)
+
+-- trait 中只允许 Positional / Labelled
+data TraitParam
+  = TPPositional !Type
+  | TPLabelled !(Located Name) !Type
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 7. Enum / Record
+--------------------------------------------------------------------------------
+
+data EnumConstr = EnumConstr
+  { ecName :: !(Located Name)
+  , ecArgs :: ![ConstrParam]
+  , ecTag :: !(Maybe (Int64, SrcSpan))
+  , ecLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+data ConstrParam = ConstrParam
+  { cpType :: !Type
+  , cpMut :: !Bool
+  , cpLabel :: !(Maybe (Located Name))
+  }
+  deriving (Eq, Show, Generic)
+
+data RecordField = RecordField
+  { rfName :: !(Located Name)
+  , rfType :: !Type
+  , rfMut :: !Bool
+  , rfVis :: !Visibility
+  , rfLoc :: !SrcSpan
+  }
+  deriving (Eq, Show, Generic)
+
+--------------------------------------------------------------------------------
+-- 8. 常量
+--------------------------------------------------------------------------------
+
+data Constant
+  = CBool !Bool
+  | CByte !Char
+  | CBytes !ByteString
+  | CChar !Char
+  | CInt !Integer
+  | CDouble !Double
+  | CString !Text
+  deriving (Eq, Show, Generic)
