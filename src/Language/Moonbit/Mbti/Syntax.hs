@@ -21,9 +21,11 @@ module Language.Moonbit.Mbti.Syntax
   )
 where
 
+import GHC.Generics (Generic)
+
 -- | This module defines the syntax for the Moonbit type inference system (Mbti).
 data MbtiFile = MbtiFile ModulePath [ModulePath] [Decl]
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data Decl
   = FnDecl FnDecl'
@@ -38,57 +40,57 @@ data Decl
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
   | TraitAliasDecl Visibility TTrait TTrait
   | FnAliasDecl Visibility (Maybe TPath) Type Name
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 -- impl[K, V] Trait for T[K, V]
 data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data ErrorType
   = ETNoPayload
   | ETSinglePayload Type
   | ETEnumPayload [(Name, [FnParam])]
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data Effect
   = EffAsync
   | EffException EffectException
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data EffectException
   = NoAraise
   | Araise Type
   | AraisePoly
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 data Type
   = TName (Maybe TPath) TCon
   | TFun [Type] Type [Effect]
   | TTuple [Type]
   | TDynTrait TTrait
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data TPath = TPath [Name] Name -- path + module name
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data TCon = TCon Name [Type]
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 newtype Constraint
   = CTrait TTrait
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data TTrait = TTrait (Maybe TPath) Name
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data FnKind
   = FreeFn
   | Method Type -- impl For which type
   | TraitMethod TTrait Bool -- whether have default impl
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- \| TraitMethod
 
@@ -101,27 +103,27 @@ data FnSig = FnSig
     funTyParams :: [(TCon, [Constraint])],
     funEff :: [Effect]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
-data FnParam 
+data FnParam
   = AnonParam Bool Type -- Anonymous parameter, e.g. `Type`
   | NamedParam Bool Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
-  deriving (Eq, Show) -- NOTE: Bool indicates whether the parameter is mutable
+  deriving (Eq, Show, Generic) -- NOTE: Bool indicates whether the parameter is mutable
 
 newtype FnAttr
   = Deprecated (Maybe String) -- #deprecated("reason")
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data FnDecl' = FnDecl'
   { fnSig :: FnSig,
     fnAttr :: [FnAttr],
     fnKind :: FnKind
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 data Visibility
   = VisPub
   | VisPubOpen
   | VisPriv
   | VisPubAll
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
