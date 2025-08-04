@@ -68,6 +68,7 @@ library
         Language.Moonbit.Mbti
         Language.Moonbit.Mbti.Parser
         Language.Moonbit.Mbti.Syntax
+        Language.Moonbit.Mbti.Pretty
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -80,6 +81,7 @@ library
         base ^>=4.21.0.0,
         parsec,
         text,
+        prettyprinter,
 
     -- Directories containing source files.
     hs-source-dirs:   src
