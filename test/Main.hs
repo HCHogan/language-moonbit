@@ -31,6 +31,7 @@ main = do
   home <- getHomeDirectory
   let coreRoot = home </> ".moon" </> "lib" </> "core"
   -- let coreRoot = home </> ".moongle" </> "packages"
+  -- let coreRoot = home </> ".moongle" </> "packages" </> "Kaida-Amethyst" </> "llvm-0.2.1"
 
   mbtiFiles <- collectMbti coreRoot
 

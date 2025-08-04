@@ -10,7 +10,7 @@ module Language.Moonbit.Mbti.Syntax
     FnKind (..),
     Name,
     FnSig (..),
-    FnAttr (..),
+    Attr (..),
     TPath (..),
     FnDecl' (..),
     TTrait (..),
@@ -32,7 +32,7 @@ data Decl
   | ImplForTypeDecl ImplSig
   | ConstDecl Name Type
   | LetDecl Name Type
-  | TypeDecl Visibility Type (Maybe Type) -- opaque or newtype
+  | TypeDecl [Attr] Visibility Type (Maybe Type) -- opaque or newtype
   | TypeAliasDecl Visibility Type Type -- original type, alias name
   | StructDecl Visibility Type [(Name, Type, Bool)] -- Bool indicates whether the field is mutable
   | EnumDecl Visibility Type [(Name, [FnParam])]
@@ -110,14 +110,14 @@ data FnParam
   | NamedParam Bool Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
   deriving (Eq, Show, Generic) -- NOTE: Bool indicates whether the parameter is mutable
 
-data FnAttr
+data Attr
   = Deprecated (Maybe String) -- #deprecated("reason")
   | External (Maybe String)
   deriving (Eq, Show, Generic)
 
 data FnDecl' = FnDecl'
   { fnSig :: FnSig,
-    fnAttr :: [FnAttr],
+    fnAttr :: [Attr],
     fnKind :: FnKind
   }
   deriving (Eq, Show, Generic)

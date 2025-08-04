@@ -59,8 +59,9 @@ prettyDecl = \case
     "const " <> pretty n <+> ":" <+> prettyType ty
   LetDecl n ty ->
     "let " <> pretty n <+> ":" <+> prettyType ty
-  TypeDecl vis ty mb ->
-    prettyVis vis
+  TypeDecl attrs vis ty mb ->
+    vsep (map prettyAttr attrs)
+      <+> prettyVis vis
       <+> "type"
       <+> prettyType ty
       <> maybe mempty (\t -> space <> "=" <+> prettyType t) mb
@@ -133,11 +134,12 @@ prettyFnDecl (FnDecl' sig attrs kind) = vsep $ map prettyAttr attrs ++ [l]
         <+> prettyType (funReturnType sig)
         <> prettyEffects (funEff sig)
 
-    prettyAttr = \case
-      Deprecated Nothing -> "#deprecated"
-      Deprecated (Just msg) -> "#deprecated(" <> pretty msg <> ")"
-      External Nothing -> "#external"
-      External (Just msg) -> "#external(" <> pretty msg <> ")"
+prettyAttr :: Attr -> Doc ann
+prettyAttr = \case
+  Deprecated Nothing -> "#deprecated"
+  Deprecated (Just msg) -> "#deprecated(" <> pretty msg <> ")"
+  External Nothing -> "#external"
+  External (Just msg) -> "#external(" <> pretty msg <> ")"
 
 --------------------------------------------------------------------------------
 -- Pretty: function name with context ------------------------------------------

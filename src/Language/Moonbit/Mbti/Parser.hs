@@ -9,7 +9,7 @@ import Language.Moonbit.Mbti.Syntax
 import Text.Parsec
 import Text.Parsec.Text.Lazy (Parser)
 
-attrCtors :: [(String, Maybe String -> FnAttr)]
+attrCtors :: [(String, Maybe String -> Attr)]
 attrCtors =
   [ ("deprecated", Deprecated),
     ("external", External)
@@ -18,7 +18,7 @@ attrCtors =
 -- >>> parse pAttr "" "#deprecated(\"use xxx instead\")"
 -- Right (Deprecated (Just "use xxx instead"))
 
-pAttr :: Parser FnAttr
+pAttr :: Parser Attr
 pAttr = do
   _ <- char '#' <?> "‘#’"
   name <- choice (map ((try . string) . fst) attrCtors) <?> "attribute name"
@@ -32,12 +32,13 @@ pAttr = do
 
 pTypeDecl :: Parser Decl
 pTypeDecl = do
+  attrs <- many (pAttr <* whiteSpace) -- 1) attributes
   vis <- pVisibility
   _ <- reserved RWType
   name <- identifier
   tyargs <- option [] (brackets (commaSep identifier))
   inner <- optionMaybe pType
-  return $ TypeDecl vis (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs)) inner
+  return $ TypeDecl attrs vis (TName Nothing (TCon name $ (\n -> TName Nothing $ TCon n []) <$> tyargs)) inner
 
 -- >>> parse pConstDecl "" "const PI : Double = 0x3.243F6A8885A308CA8A54"
 -- Right (ConstDecl "PI" (TName Nothing (TCon "Double" [])))
@@ -136,7 +137,7 @@ pTDynTrait = symbol "&" *> (TDynTrait <$> pTTrait)
 
 pTNonFun :: Parser Type
 pTNonFun = do
-  base <- try pTTuple <|> pTAtom
+  base <- try pTTuple <|> pTAtom <|> pTDynTrait
   qs <- many (symbol "?")
   let wrap t = TName Nothing (TCon "Option" [t])
       ty = foldl (\t _ -> wrap t) base qs
@@ -158,7 +159,6 @@ pType :: Parser Type
 pType =
   choice
     [ try pTFun,
-      try pTDynTrait,
       pTNonFun
     ]
     <?> "type"
@@ -268,7 +268,7 @@ pTraitDecl = do
   _ <- reserved RWTrait
   trait <- pTTrait
   cs <- option [] $ reservedOp OpColon *> commaSep pConstraint
-  methods <- braces $ many (pTraitMethod trait)
+  methods <- option [] $ braces $ many (pTraitMethod trait)
   return $ TraitDecl vis trait cs methods
 
 -- >>> parse pEnumDecl "" "pub(all) enum MyEnum[T] { A(T) B(T, fuck~ : T) }"
