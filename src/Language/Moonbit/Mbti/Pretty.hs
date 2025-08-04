@@ -136,6 +136,8 @@ prettyFnDecl (FnDecl' sig attrs kind) = vsep $ map prettyAttr attrs ++ [l]
     prettyAttr = \case
       Deprecated Nothing -> "#deprecated"
       Deprecated (Just msg) -> "#deprecated(" <> pretty msg <> ")"
+      External Nothing -> "#external"
+      External (Just msg) -> "#external(" <> pretty msg <> ")"
 
 --------------------------------------------------------------------------------
 -- Pretty: function name with context ------------------------------------------

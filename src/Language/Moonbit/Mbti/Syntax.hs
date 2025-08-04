@@ -110,8 +110,9 @@ data FnParam
   | NamedParam Bool Name Type Bool Bool -- Named parameter, e.g. `name~ : Type = ../_`
   deriving (Eq, Show, Generic) -- NOTE: Bool indicates whether the parameter is mutable
 
-newtype FnAttr
+data FnAttr
   = Deprecated (Maybe String) -- #deprecated("reason")
+  | External (Maybe String)
   deriving (Eq, Show, Generic)
 
 data FnDecl' = FnDecl'

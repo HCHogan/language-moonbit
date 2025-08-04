@@ -11,7 +11,8 @@ import Text.Parsec.Text.Lazy (Parser)
 
 attrCtors :: [(String, Maybe String -> FnAttr)]
 attrCtors =
-  [ ("deprecated", Deprecated)
+  [ ("deprecated", Deprecated),
+    ("external", External)
   ]
 
 -- >>> parse pAttr "" "#deprecated(\"use xxx instead\")"
