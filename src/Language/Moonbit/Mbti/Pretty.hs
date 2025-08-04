@@ -48,6 +48,9 @@ prettyModulePath (ModulePath u m pkgSegs) = hcat . punctuate "/" $ map prettySeg
 -- Declarations ----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+renderDecl :: Decl -> Text
+renderDecl = renderStrict . layoutSmart defaultLayoutOptions . prettyDecl
+
 prettyDecl :: Decl -> Doc ann
 prettyDecl = \case
   FnDecl d -> prettyFnDecl d
