@@ -225,7 +225,7 @@ prettyType :: Type -> Doc ann
 prettyType = go False
   where
     go _ (TName Nothing con) = prettyTCon con
-    go _ (TName (Just p) con) = prettyTPath p <> "::" <> prettyTCon con
+    go _ (TName (Just p) con) = prettyTPath p <> "." <> prettyTCon con
     go _ (TTuple ts) = tupled (map (go False) ts)
     go p (TFun as r effs) =
       parensIf p $
@@ -245,7 +245,7 @@ prettyTCon (TCon n []) = pretty n
 prettyTCon (TCon n tys) = pretty n <> brackets (hsep (punctuate comma (map prettyType tys)))
 
 prettyTPath :: TPath -> Doc ann
-prettyTPath (TPath mods last') = hcat . punctuate "::" $ map pretty (mods ++ [last'])
+prettyTPath (TPath mods last') = pretty @[Char] "@" <> (hcat . punctuate "." $ map pretty (mods ++ [last']))
 
 prettyTrait :: TTrait -> Doc ann
 prettyTrait (TTrait mbPath nm) = maybe mempty (\p -> prettyTPath p <> "::") mbPath <> pretty nm
