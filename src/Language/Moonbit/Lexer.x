@@ -1,9 +1,11 @@
 {
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Language.Moonbit.Lexer 
   ( -- * Invoking Alex
     Alex
+  , AlexPosn (..)
   , alexGetInput
   , alexError
   , runAlex
@@ -90,6 +92,9 @@ $whitespace = [\
 tokens :-
 
 <0> $whitespace+ ;
+<0> "=>" { tok TkFatArrow }
+<0> "->" { tok TkThinArrow }
+
 
 {
 data AlexUserState = AlexUserState
@@ -102,11 +107,74 @@ alexInitUserState = AlexUserState
   }
 
 mkPosition :: AlexPosn -> Position
-mkPosition (AlexPosition abs row col) = Position {..}
+mkPosition (AlexPn abs row col) = Position {..}
 
 mkSpan :: AlexInput -> Int -> Span
 mkSpan (start, _, str, _) len =
   let lo = mkPosition start
-      hi = mkPosition (BS.foldl' alexMove start $ BS.take len str)
+      hi = mkPosition (BS.foldl' alexMove start $ BS.take (fromIntegral len) str)
   in Span{..}
+
+alexEOF :: Alex Token
+alexEOF = do
+  (alexposn, _, _, _) <- alexGetInput
+  let pos = mkPosition alexposn
+  pure (Located (Span pos pos) TkEof)
+
+tok :: Tk -> AlexAction Token
+tok ctor inp len = do
+  let span = mkSpan inp (fromIntegral len)
+  pure $ Located span ctor
+
+mkAction :: (ByteString -> a) -> (a -> Tk) -> AlexAction Token
+mkAction f ctor inp@(_,_,str,_) len =
+  let bs = BS.take (fromIntegral len) str
+  in pure $ Located (mkSpan inp (fromIntegral len)) (ctor (f bs))
+
+tokUIdent :: AlexAction Token
+tokUIdent = mkAction id TkUIdent
+
+tokLIdent :: AlexAction Token
+tokLIdent = mkAction id TkLIdent
+
+tokChar :: AlexAction Token
+tokChar = mkAction id TkChar
+
+tokInt :: AlexAction Token
+tokInt = mkAction id TkInt
+
+tokByte :: AlexAction Token
+tokByte = mkAction id TkByte
+
+tokBytes :: AlexAction Token
+tokBytes = mkAction id TkBytes
+
+tokFloat :: AlexAction Token
+tokFloat = mkAction id TkFloat
+
+tokDouble :: AlexAction Token
+tokDouble = mkAction id TkDouble
+
+tokString :: AlexAction Token
+tokString = mkAction id TkString
+
+-- tokMultilineString :: AlexAction Token
+-- tokMultilineString = mkAction id TkMultilineString
+
+tokMultilineInterp :: AlexAction Token
+tokMultilineInterp = mkAction id TkMultilineInterp
+
+tokInterp :: AlexAction Token
+tokInterp = mkAction id TkInterp
+
+scanMany :: ByteString -> Either String [Token]
+scanMany input = runAlex input go
+  where
+    go = do
+      output <- alexMonadScan
+      if unLoc output == TkEof
+        then pure [output]
+        else (output :) <$> go
+
+
 }

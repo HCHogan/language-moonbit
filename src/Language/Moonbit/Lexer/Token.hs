@@ -22,108 +22,108 @@ type InterpLiteral = ByteString
 -- tokens) the corresponding constructor here carries the same
 -- parameter type.
 data Tk
-  = CHAR CharLiteral
-  | INT ByteString
-  | BYTE CharLiteral
-  | BYTES StringLiteral
-  | FLOAT ByteString
-  | DOUBLE ByteString
-  | STRING StringLiteral
-  | MULTILINE_STRING ByteString
-  | MULTILINE_INTERP InterpLiteral
-  | INTERP InterpLiteral
-  | ATTRIBUTE (ByteString, Maybe String, String)
-  | LIDENT ByteString
-  | UIDENT ByteString
-  | POST_LABEL ByteString
-  | COMMENT_TOK Comment
-  | NEWLINE
-  | INFIX1 ByteString
-  | INFIX2 ByteString
-  | INFIX3 ByteString
-  | INFIX4 ByteString
-  | AUGMENTED_ASSIGNMENT ByteString
-  | EOF
-  | FALSE
-  | TRUE
-  | PUB
-  | PRIV
-  | READONLY
-  | IMPORT
-  | EXTERN
-  | BREAK
-  | CONTINUE
-  | STRUCT
-  | ENUM
-  | TRAIT
-  | DERIVE
-  | IMPL
-  | WITH
-  | RAISE
-  | THROW
-  | TRY
-  | CATCH
-  | ASYNC
-  | TYPEALIAS
-  | TRAITALIAS
-  | FNALIAS
-  | EQUAL
-  | LPAREN
-  | RPAREN
-  | COMMA
-  | MINUS
-  | QUESTION
-  | EXCLAMATION
-  | DOT_LIDENT ByteString
-  | DOT_UIDENT ByteString
-  | DOT_INT Int
-  | DOT_LPAREN
-  | COLONCOLON
-  | COLON
-  | SEMI Bool
-  | LBRACKET
-  | PLUS
-  | RBRACKET
-  | UNDERSCORE
-  | BAR
-  | LBRACE
-  | RBRACE
-  | AMPERAMPER
-  | AMPER
-  | CARET
-  | BARBAR
-  | PACKAGE_NAME ByteString
-  | AS
-  | PIPE
-  | ELSE
-  | FN
-  | IF
-  | LET
-  | CONST
-  | MATCH
-  | USING
-  | MUTABLE
-  | TYPE
-  | FAT_ARROW
-  | THIN_ARROW
-  | WHILE
-  | RETURN
-  | DOTDOT
-  | RANGE_INCLUSIVE
-  | RANGE_EXCLUSIVE
-  | ELLIPSIS
-  | TEST
-  | LOOP
-  | GUARD
-  | DEFER
-  | FOR
-  | IN
-  | IS
-  | SUBERROR
-  | AND
-  | LETREC
-  | ENUMVIEW
-  | NORAISE
+  = TkChar CharLiteral
+  | TkInt ByteString
+  | TkByte CharLiteral
+  | TkBytes StringLiteral
+  | TkFloat ByteString
+  | TkDouble ByteString
+  | TkString StringLiteral
+  | TkMultilineString ByteString
+  | TkMultilineInterp InterpLiteral
+  | TkInterp InterpLiteral
+  | TkAttribute (ByteString, Maybe String, String)
+  | TkLIdent ByteString
+  | TkUIdent ByteString
+  | TkPostLabel ByteString
+  | TkCommentTok Comment
+  | TkNewline
+  | TkInfix1 ByteString
+  | TkInfix2 ByteString
+  | TkInfix3 ByteString
+  | TkInfix4 ByteString
+  | TkAugmentedAssignment ByteString
+  | TkEof
+  | TkFalse
+  | TkTrue
+  | TkPub
+  | TkPriv
+  | TkReadonly
+  | TkImport
+  | TkExtern
+  | TkBreak
+  | TkContinue
+  | TkStruct
+  | TkEnum
+  | TkTrait
+  | TkDerive
+  | TkImpl
+  | TkWith
+  | TkRaise
+  | TkThrow
+  | TkTry
+  | TkCatch
+  | TkAsync
+  | TkTypealias
+  | TkTraitalias
+  | TkFnalias
+  | TkEqual
+  | TkLParen
+  | TkRParen
+  | TkComma
+  | TkMinus
+  | TkQuestion
+  | TkExclamation
+  | TkDotLIdent ByteString
+  | TkDotUIdent ByteString
+  | TkDotInt Int
+  | TkDotLParen
+  | TkColonColon
+  | TkColon
+  | TkSemi Bool
+  | TkLBracket
+  | TkPlus
+  | TkRBracket
+  | TkUnderscore
+  | TkBar
+  | TkLBrace
+  | TkRBrace
+  | TkAmperAmper
+  | TkAmper
+  | TkCaret
+  | TkBarBar
+  | TkPackageName ByteString
+  | TkAs
+  | TkPipe
+  | TkElse
+  | TkFn
+  | TkIf
+  | TkLet
+  | TkConst
+  | TkMatch
+  | TkUsing
+  | TkMutable
+  | TkType
+  | TkFatArrow
+  | TkThinArrow
+  | TkWhile
+  | TkReturn
+  | TkDotDot
+  | TkRangeInclusive
+  | TkRangeExclusive
+  | TkEllipsis
+  | TkTest
+  | TkLoop
+  | TkGuard
+  | TkDefer
+  | TkFor
+  | TkIn
+  | TkIs
+  | TkSuberror
+  | TkAnd
+  | TkLetrec
+  | TkEnumview
+  | TkNoraise
   deriving (Show, Eq, Generic)
 
 -- | Comments that can appear in the source code.  MoonBit tracks
