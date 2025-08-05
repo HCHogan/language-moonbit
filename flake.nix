@@ -37,8 +37,8 @@
           haskell.compiler.ghc912
           haskell.packages.ghc912.haskell-language-server
           cabal-install
-          alex
-          happy
+          haskellPackages.alex
+          haskellPackages.happy
         ];
       in {
         _module.args.pkgs = import inputs.nixpkgs {
