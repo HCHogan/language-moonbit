@@ -28,7 +28,7 @@ pAttr = do
     Nothing -> parserFail $ "unknown attribute: " ++ name
 
 -- >>> parse pTypeDecl "" "type Node[K, V]"
--- Right (TypeDecl VisPriv (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])) Nothing)
+-- Right (TypeDecl [] VisPriv (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])) Nothing)
 
 pTypeDecl :: Parser Decl
 pTypeDecl = do
@@ -339,15 +339,33 @@ pTraitAliasDecl = do
   TraitAliasDecl vis orig <$> pTTrait
 
 -- >>> parse pStructDecl "" "pub(all) struct SparseArray[X] { elem_info : Bitset \n data : FixedArray[X] }"
--- Right (StructDecl VisPubAll (TName Nothing (TCon "SparseArray" [TName Nothing (TCon "X" [])])) [("elem_info",TName Nothing (TCon "Bitset" []),False),("data",TName Nothing (TCon "FixedArray" [TName Nothing (TCon "X" [])]),False)])
+-- Right (StructDecl VisPubAll (TName Nothing (TCon "SparseArray" [TName Nothing (TCon "X" [])])) (NamedStruct [("elem_info",TName Nothing (TCon "Bitset" []),False),("data",TName Nothing (TCon "FixedArray" [TName Nothing (TCon "X" [])]),False)]))
+
+-- >>> parse pStructDecl "" "struct Point(mut f64, f64)"
+-- Right (StructDecl VisPriv (TName Nothing (TCon "Point" [])) (TupleStruct [(TName Nothing (TCon "f64" []),True),(TName Nothing (TCon "f64" []),False)]))
 
 pStructDecl :: Parser Decl
 pStructDecl = do
   vis <- pVisibility
   _ <- reserved RWStruct
   name <- pType
+  body <- try pNamedStruct <|> pTupleStruct
+  return $ StructDecl vis name body
+
+pTupleStruct :: Parser StructD
+pTupleStruct = do
+  fields <- parens (commaSep fieldDecl)
+  return $ TupleStruct fields
+  where
+    fieldDecl = do
+      isMut <- option False (reserved RWMut $> True)
+      ty <- pType
+      return (ty, isMut)
+
+pNamedStruct :: Parser StructD
+pNamedStruct = do
   fields <- braces (many fieldDecl)
-  return $ StructDecl vis name fields
+  return $ NamedStruct fields
   where
     fieldDecl = do
       isMut <- option False (reserved RWMut $> True)

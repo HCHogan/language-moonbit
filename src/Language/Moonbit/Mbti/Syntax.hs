@@ -18,6 +18,7 @@ module Language.Moonbit.Mbti.Syntax
     FnParam (..),
     Visibility (..),
     ErrorType (..),
+    StructD (..),
   )
 where
 
@@ -34,7 +35,7 @@ data Decl
   | LetDecl Name Type
   | TypeDecl [Attr] Visibility Type (Maybe Type) -- opaque or newtype
   | TypeAliasDecl Visibility Type Type -- original type, alias name
-  | StructDecl Visibility Type [(Name, Type, Bool)] -- Bool indicates whether the field is mutable
+  | StructDecl Visibility Type StructD
   | EnumDecl Visibility Type [(Name, [FnParam])]
   | ErrorTypeDecl Visibility Name ErrorType
   | TraitDecl Visibility TTrait [Constraint] [FnDecl']
@@ -47,6 +48,11 @@ data ImplSig = ImplSig [(TCon, [Constraint])] TTrait Type
   deriving (Show, Eq, Generic)
 
 data ModulePath = ModulePath {mpUserName :: Name, mpModuleName :: Name, mpPackagePath :: [Name]}
+  deriving (Show, Eq, Generic)
+
+data StructD
+  = NamedStruct [(Name, Type, Bool)] -- Bool indicates whether the field is mutable
+  | TupleStruct [(Type, Bool)]
   deriving (Show, Eq, Generic)
 
 data ErrorType
@@ -113,6 +119,7 @@ data FnParam
 data Attr
   = Deprecated (Maybe String) -- #deprecated("reason")
   | External (Maybe String)
+  | Alias String (Maybe String) -- alias(combine, deprecated="use add instead")
   deriving (Eq, Show, Generic)
 
 data FnDecl' = FnDecl'

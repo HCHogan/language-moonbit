@@ -67,13 +67,28 @@ prettyDecl = \case
       <> maybe mempty (\t -> space <> "=" <+> prettyType t) mb
   TypeAliasDecl vis orig alias ->
     prettyVis vis <+> "type" <+> prettyType alias <+> "=" <+> prettyType orig
-  StructDecl vis t fields ->
-    vsep $
-      [prettyVis vis <+> "struct" <+> prettyType t <+> "{"]
-        <> map prettyField fields
-        <> ["}"]
-    where
-      prettyField (nm, ty, mut) = "  " <> pretty nm <> ":" <+> prettyType ty <> if mut then " mut" else mempty
+  StructDecl vis t sd ->
+    case sd of
+      NamedStruct fields ->
+        let prettyNamedField :: (Name, Type, Bool) -> Doc ann
+            prettyNamedField (nm, ty, mut) =
+              "  "
+                <> (if mut then "mut" <+> pretty nm else pretty nm)
+                <+> ":"
+                <+> prettyType ty
+         in vsep $
+              [ prettyVis vis <+> "struct" <+> prettyType t <+> "{"
+              ]
+                <> map prettyNamedField fields
+                <> ["}"]
+      TupleStruct fields ->
+        let prettyTupleField :: (Type, Bool) -> Doc ann
+            prettyTupleField (ty, mut) =
+              (if mut then "mut " else mempty) <> prettyType ty
+         in prettyVis vis
+              <+> "struct"
+              <+> prettyType t
+              <> parens (hsep (punctuate "," (map prettyTupleField fields)))
   EnumDecl vis t ctors ->
     vsep $
       [prettyVis vis <+> "enum" <+> prettyType t <+> "{"]
@@ -140,6 +155,7 @@ prettyAttr = \case
   Deprecated (Just msg) -> "#deprecated(" <> pretty msg <> ")"
   External Nothing -> "#external"
   External (Just msg) -> "#external(" <> pretty msg <> ")"
+  Alias name depre -> "#alias(" <> pretty name <> maybe mempty (\d -> ", deprecated=\"" <> pretty d <> "\"") depre <> ")"
 
 --------------------------------------------------------------------------------
 -- Pretty: function name with context ------------------------------------------
