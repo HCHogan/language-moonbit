@@ -9,23 +9,37 @@ import Language.Moonbit.Mbti.Syntax
 import Text.Parsec
 import Text.Parsec.Text.Lazy (Parser)
 
-attrCtors :: [(String, Maybe String -> Attr)]
-attrCtors =
-  [ ("deprecated", Deprecated),
-    ("external", External)
-  ]
-
 -- >>> parse pAttr "" "#deprecated(\"use xxx instead\")"
 -- Right (Deprecated (Just "use xxx instead"))
+
+-- >>> parse pAttr "" "#alias(combine, deprecated=\"use merge instead\")"
+-- Right (Alias "combine" (Just (Just "use merge instead")))
+
+pSimpleAttr :: String -> (Maybe String -> Attr) -> Parser Attr
+pSimpleAttr name ctor = try $ do
+  _ <- string name
+  ctor <$> optionMaybe (parens stringLit)
+
+pAliasAttr :: Parser Attr
+pAliasAttr = try $ do
+  _ <- string "alias"
+  parens $ do
+    aliasName <- identifier
+    deprecatedInfo <- optionMaybe $ do
+      _ <- lexeme (char ',')
+      _ <- string "deprecated"
+      optionMaybe (lexeme (char '=') *> stringLit)
+    return $ Alias aliasName deprecatedInfo
 
 pAttr :: Parser Attr
 pAttr = do
   _ <- char '#' <?> "‘#’"
-  name <- choice (map ((try . string) . fst) attrCtors) <?> "attribute name"
-  arg <- optionMaybe $ parens stringLit -- optional argument for the attribute
-  case lookup name attrCtors of
-    Just ctor -> return $ ctor arg
-    Nothing -> parserFail $ "unknown attribute: " ++ name
+  choice
+    [ pAliasAttr,
+      pSimpleAttr "deprecated" Deprecated,
+      pSimpleAttr "external" External
+    ]
+    <?> "attribute name"
 
 -- >>> parse pTypeDecl "" "type Node[K, V]"
 -- Right (TypeDecl [] VisPriv (TName Nothing (TCon "Node" [TName Nothing (TCon "K" []),TName Nothing (TCon "V" [])])) Nothing)
@@ -429,7 +443,7 @@ pModulePath = do
 pModuleSeg :: Parser String
 pModuleSeg = do
   first <- alphaNum <|> char '_'
-  rest  <- many (alphaNum <|> char '-' <|> char '_')
+  rest <- many (alphaNum <|> char '-' <|> char '_')
   pure $ first : rest
 
 pQuotedModulePath :: Parser ModulePath

@@ -28,6 +28,7 @@ module Language.Moonbit.Lexer (
   charLiteral,
   octal,
   rawIdent,
+  lexeme,
 ) where
 
 import Data.Functor.Identity
@@ -270,6 +271,9 @@ octal = Tok.octal lexer
 
 symbol :: String -> Parser String
 symbol = Tok.symbol lexer
+
+lexeme :: Parser a -> Parser a
+lexeme = Tok.lexeme lexer
 
 slash :: Parser String
 slash = symbol "/"

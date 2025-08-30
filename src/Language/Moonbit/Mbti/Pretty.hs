@@ -155,7 +155,13 @@ prettyAttr = \case
   Deprecated (Just msg) -> "#deprecated(" <> pretty msg <> ")"
   External Nothing -> "#external"
   External (Just msg) -> "#external(" <> pretty msg <> ")"
-  Alias name depre -> "#alias(" <> pretty name <> maybe mempty (\d -> ", deprecated=\"" <> pretty d <> "\"") depre <> ")"
+  Alias name depre ->
+    let base = "#alias(" <> pretty name
+        deprecatedPart = case depre of
+          Nothing -> ""
+          Just Nothing -> ", deprecated"
+          Just (Just reason) -> ", deprecated=" <> pretty (show reason)
+     in base <> deprecatedPart <> ")"
 
 --------------------------------------------------------------------------------
 -- Pretty: function name with context ------------------------------------------

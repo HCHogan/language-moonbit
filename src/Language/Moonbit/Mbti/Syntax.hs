@@ -119,7 +119,7 @@ data FnParam
 data Attr
   = Deprecated (Maybe String) -- #deprecated("reason")
   | External (Maybe String)
-  | Alias String (Maybe String) -- alias(combine, deprecated="use add instead")
+  | Alias String (Maybe (Maybe String)) -- #alias(combine, deprecated="use add instead")
   deriving (Eq, Show, Generic)
 
 data FnDecl' = FnDecl'
